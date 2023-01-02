@@ -21,9 +21,22 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-
+                cursor: default;
+                user-select: none;
                 border: 0px solid $color-border1;
                 border-width: 0 1px 1px 0;
+
+                &.active {
+                    cursor: pointer;
+                }
+
+                &.piece-white {
+                    color: white;
+                }
+
+                &.piece-black {
+                    color: grey;
+                }
 
                 .number-label,
                 .letter-label {

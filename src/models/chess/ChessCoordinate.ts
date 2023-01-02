@@ -68,16 +68,16 @@ export enum ChessCoordinate {
     h8 = 'h8',
 }
 
-const _chessCoordinateList = [ChessCoordinate.a1, ChessCoordinate.a2, ChessCoordinate.a3, ChessCoordinate.a4, ChessCoordinate.a5, ChessCoordinate.a6, ChessCoordinate.a7, ChessCoordinate.a8, ChessCoordinate.b1, ChessCoordinate.b2, ChessCoordinate.b3, ChessCoordinate.b4, ChessCoordinate.b5, ChessCoordinate.b6, ChessCoordinate.b7, ChessCoordinate.b8, ChessCoordinate.c1, ChessCoordinate.c2, ChessCoordinate.c3, ChessCoordinate.c4, ChessCoordinate.c5, ChessCoordinate.c6, ChessCoordinate.c7, ChessCoordinate.c8, ChessCoordinate.d1, ChessCoordinate.d2, ChessCoordinate.d3, ChessCoordinate.d4, ChessCoordinate.d5, ChessCoordinate.d6, ChessCoordinate.d7, ChessCoordinate.d8, ChessCoordinate.e1, ChessCoordinate.e2, ChessCoordinate.e3, ChessCoordinate.e4, ChessCoordinate.e5, ChessCoordinate.e6, ChessCoordinate.e7, ChessCoordinate.e8, ChessCoordinate.f1, ChessCoordinate.f2, ChessCoordinate.f3, ChessCoordinate.f4, ChessCoordinate.f5, ChessCoordinate.f6, ChessCoordinate.f7, ChessCoordinate.f8, ChessCoordinate.g1, ChessCoordinate.g2, ChessCoordinate.g3, ChessCoordinate.g4, ChessCoordinate.g5, ChessCoordinate.g6, ChessCoordinate.g7, ChessCoordinate.g8, ChessCoordinate.h1, ChessCoordinate.h2, ChessCoordinate.h3, ChessCoordinate.h4, ChessCoordinate.h5, ChessCoordinate.h6, ChessCoordinate.h7, ChessCoordinate.h8];
+const _chessCoordinateList = [ChessCoordinate.h1,ChessCoordinate.g1,ChessCoordinate.f1,ChessCoordinate.e1,ChessCoordinate.d1,ChessCoordinate.c1,ChessCoordinate.b1,ChessCoordinate.a1,ChessCoordinate.h2,ChessCoordinate.g2,ChessCoordinate.f2,ChessCoordinate.e2,ChessCoordinate.d2,ChessCoordinate.c2,ChessCoordinate.b2,ChessCoordinate.a2,ChessCoordinate.h3,ChessCoordinate.g3,ChessCoordinate.f3,ChessCoordinate.e3,ChessCoordinate.d3,ChessCoordinate.c3,ChessCoordinate.b3,ChessCoordinate.a3,ChessCoordinate.h4,ChessCoordinate.g4,ChessCoordinate.f4,ChessCoordinate.e4,ChessCoordinate.d4,ChessCoordinate.c4,ChessCoordinate.b4,ChessCoordinate.a4,ChessCoordinate.h5,ChessCoordinate.g5,ChessCoordinate.f5,ChessCoordinate.e5,ChessCoordinate.d5,ChessCoordinate.c5,ChessCoordinate.b5,ChessCoordinate.a5,ChessCoordinate.h6,ChessCoordinate.g6,ChessCoordinate.f6,ChessCoordinate.e6,ChessCoordinate.d6,ChessCoordinate.c6,ChessCoordinate.b6,ChessCoordinate.a6,ChessCoordinate.h7,ChessCoordinate.g7,ChessCoordinate.f7,ChessCoordinate.e7,ChessCoordinate.d7,ChessCoordinate.c7,ChessCoordinate.b7,ChessCoordinate.a7,ChessCoordinate.h8,ChessCoordinate.g8,ChessCoordinate.f8,ChessCoordinate.e8,ChessCoordinate.d8,ChessCoordinate.c8,ChessCoordinate.b8,ChessCoordinate.a8];
 
 const _chessCoordinateToIndexMap: StrictEnumDictionary<ChessCoordinate, number> = _chessCoordinateList.reduce((acc, val, i) => ({ ...acc, [val]: i }), {} as any); 
 const _chessCoordinateFromIndexMap: NumberDictionary<ChessCoordinate> = _chessCoordinateList.reduce((acc, val, i) => ({ ...acc, [i]: val }), {} as any); 
-const _chessCoordinateToMatrixIndexMap: StrictEnumDictionary<ChessCoordinate, [number, number]> = _chessCoordinateList.reduce((acc, val, i) => ({ ...acc, [val]: [Math.floor(i / 8), i % 8] }), {} as any); 
+const _chessCoordinateToMatrixIndexMap: StrictEnumDictionary<ChessCoordinate, [number, number]> = _chessCoordinateList.reduce((acc, val, i) => ({ ...acc, [val]: [Math.floor(i / 8), i % 8] }), {} as any);
 const _chessCoordinateFromMatrixIndexMap: NumberDictionary<NumberDictionary<ChessCoordinate>> = _chessCoordinateList.reduce((acc, val, i) => {
-    const cIndex = Math.floor(i / 8);
-    const rIndex = i % 8;
+    const cIndex = i % 8;
+    const rIndex = Math.floor(i / 8);
     if (acc[cIndex] == null) acc[cIndex] = {};
-    acc[cIndex][rIndex] = val;
+    acc[rIndex][cIndex] = val;
     return acc;
 }, {} as any);
 
@@ -93,6 +93,6 @@ export const chessCoordinateToMatrixIndex = (coordinate: ChessCoordinate) => {
     return _chessCoordinateToMatrixIndexMap[coordinate];
 };
 
-export const chessCoordinateFromMatrixIndex = (cIndex: number, rIndex: number) => {
-    return _chessCoordinateFromMatrixIndexMap[cIndex]?.[rIndex] ?? throwExpression('Invalid chessboard index');
+export const chessCoordinateFromMatrixIndex = (rIndex: number, cIndex: number) => {
+    return _chessCoordinateFromMatrixIndexMap[rIndex]?.[cIndex] ?? throwExpression('Invalid chessboard index');
 };

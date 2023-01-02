@@ -15,3 +15,8 @@ export enum ChessPieceSymbol {
     Bishop = 'B',
     Knight = 'N',
 }
+
+export enum ChessPieceColor {
+    White = 'White',
+    Black = 'Black',
+}
