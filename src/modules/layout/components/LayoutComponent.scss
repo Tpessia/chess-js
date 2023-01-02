@@ -1,0 +1,127 @@
+@import '@/styles/variables';
+
+.layout {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .header {
+        background-color: $color-bg2;
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+
+        .title {
+            color: $color-font2;
+            font-size: 1.8rem;
+            letter-spacing: 3px;
+            font-weight: 600;
+            
+            a {
+                margin: 16px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+    }
+
+    .desktop-navbar {
+        @media (max-width: 991px) {
+            display: none;
+        }
+
+        color: $color-font2;
+        position: absolute;
+        right: 0;
+
+        ul {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: row;
+            margin-right: 15px;
+
+            li {
+                a {
+                    padding: 23px 15px;
+                    display: inline-block;
+
+                    &.active {
+                        font-weight: 600;
+                    }
+                }
+            }
+        }
+    }
+
+    .mobile-navbar {
+        @media (min-width: 992px) {
+            display: none;
+        }
+
+        background-color: $color-bg1;
+        position: fixed;
+        bottom: 0;
+        width: 100vw;
+        display: flex;
+        flex-direction: row;
+        z-index: $z-index-2;
+
+        ul {
+            display: flex;
+            width: 100%;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-around;
+
+            li {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                border: 0px solid $color-border1;
+                border-width: 1px 1px 0 0;
+
+                &:last-child {
+                    border-right-width: 0;
+                }
+
+                a {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+                    height: 50px;
+                    width: 100%;
+
+                    i {
+                        font-size: 1.3rem;
+                    }
+
+                    &.active {
+                        background-color: rgba(0, 0, 0, 0.15);
+                    }
+                }
+            }
+        }
+    }
+
+    .content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: auto;
+        padding: 15px 20px 15px;
+        position: relative;
+
+        @media (max-width: 767px) {
+            width: 100%;
+        }
+    }
+}

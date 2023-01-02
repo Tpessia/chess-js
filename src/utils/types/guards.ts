@@ -1,0 +1,1 @@
+export function isFunction(maybeFn: unknown): maybeFn is Function { return typeof maybeFn === 'function'; }

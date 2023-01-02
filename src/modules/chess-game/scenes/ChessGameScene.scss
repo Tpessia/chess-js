@@ -1,0 +1,48 @@
+@import '@/styles/variables';
+
+#game {
+    .chess-board {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .chess-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(8, 4rem);
+            grid-template-rows: repeat(8, 4rem);
+            align-items: stretch;
+            justify-items: stretch;
+
+            border: 0px solid $color-border1;
+            border-width: 1px 0 0 1px;
+
+            .chess-square {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                border: 0px solid $color-border1;
+                border-width: 0 1px 1px 0;
+
+                .number-label,
+                .letter-label {
+                    position: absolute;
+                    padding: 5px;
+                    font-size: .6rem;
+                    color: $color-disabled1;
+                }
+
+                .number-label {
+                    top: 0;
+                    left: 0;
+                }
+
+                .letter-label {
+                    bottom: 0;
+                    right: 0;
+                }
+            }
+        }
+    }
+}

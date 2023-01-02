@@ -1,0 +1,29 @@
+@import '@/styles/variables';
+
+.list {
+    .list-item {
+        position: relative;
+    
+        .list-remove {
+            color: $color-font1;
+            position: absolute;
+            top: 0;
+            right: 0;
+            transition: opacity .2s;
+        }
+    }
+    
+    .list-add {
+        display: block;
+        background-color: $color-bg2;
+        color: $color-font2;
+        font-size: 1rem;
+        font-weight: 700;
+        height: 2rem;
+        width: 15%;
+        margin: 0 auto;
+        line-height: 1.8rem;
+        text-align: center;
+        padding: 0;
+    }
+}

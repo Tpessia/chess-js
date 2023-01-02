@@ -1,0 +1,108 @@
+@import '~react-toastify/dist/ReactToastify.min.css';
+
+@import './base';
+@import './grid';
+@import './notification.scss';
+
+.form-group {
+  input,
+  select {
+    display: block;
+    height: 1.75rem;
+    line-height: 1.75rem;
+    padding: 2px 5px;
+    width: calc(100% - 2 * 5px);
+    color: $color-font1;
+    border: 1px solid $color-border1;
+    background-color: $color-bg1;
+    transition: background-color .2s;
+    border-radius: $btn-border1;
+  
+    &:focus {
+      box-shadow: 0 0 1px 1px $color-border1;
+    }
+  }
+
+  label {
+    display: inline-block;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+  }
+
+  &:not(:last-child) {
+    margin-bottom: 10px;
+  }
+}
+
+.sub-title {
+  font-weight: 700;
+  margin: 1rem 0 .5rem;
+}
+
+.btn {
+  border-radius: 5px;
+  text-align: center;
+  font-weight: 500;
+  color: $color-font2;
+  background-color: $color-bg2;
+  padding: 8px 10px;
+}
+
+.gain-zero {
+  color: $color-font1;
+}
+
+.gain-plus {
+  color: #00d300;
+}
+
+.gain-minus {
+  color: #ff2b2b;
+}
+
+.ripple {
+  position: relative;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+
+  &:after {
+    content: "";
+    display: block;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, #000 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10,10);
+    opacity: 0;
+    transition: transform .5s, opacity 1s;
+  }
+
+  &:active:after {
+    transform: scale(0,0);
+    opacity: .2;
+    transition: 0s;
+  }
+}
+
+.fa-spinner {
+  font-size: .95rem;
+}
+
+// .ripple {
+//   transition: filter 0.8s;
+// }
+// .ripple:hover {
+//   filter: brightness(1.4);
+// }
+// .ripple:active {
+//   filter: brightness(1);
+// }
+
+.Toastify__toast-body {
+  white-space: pre-line;
+}

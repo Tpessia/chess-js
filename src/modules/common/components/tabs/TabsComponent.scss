@@ -1,0 +1,28 @@
+@import '@/styles/variables';
+
+.tabs {
+    width: 100%;
+    overflow-x: auto; // overflow-x: scroll;
+    margin: .5rem 0;
+
+    .tab-items {
+        display: flex;
+        flex-direction: row;
+
+        .tab-item {
+            margin: .5rem;
+
+            &:first-child {
+                margin-left: 0;
+            }
+
+            &:last-child {
+                margin-right: 0;
+            }
+
+            &.tab-active {
+                font-weight: 500;
+            }
+        }
+    }
+}

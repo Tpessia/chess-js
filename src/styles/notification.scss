@@ -1,0 +1,33 @@
+@import './variables.scss';
+
+.r-notification-container {
+    display: inline-block;
+    width: auto;
+    top: 53px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: top .3s;
+
+    .r-notification {
+        min-height: 38px;
+        padding: 0 8px;
+        border-radius: 2px;
+        font-size: 1.05rem;
+        margin-bottom: 8px;
+
+        &.r-notification-info {
+            background: lighten($color-bg2, 15);
+            color: $color-font2;
+        }
+
+        &.r-notification-error {
+            background: $color-red;
+            color: $color-font2;
+            font-weight: 600;
+        }
+
+        .r-notification-body {
+            text-align: center;
+        }
+    }
+}

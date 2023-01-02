@@ -1,0 +1,15 @@
+@import '@/styles/variables';
+
+.loading {
+    font-size: 2rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - 200px);
+
+    .fa-spinner {
+        font-size: 1.6rem;
+        margin-left: 10px;
+    }
+}
