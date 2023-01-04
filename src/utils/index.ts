@@ -10,3 +10,4 @@ export * from './reactjs/reactjs-input-handlers';
 export * from './reactjs/reactjs-utils';
 export * from './timeout/timeout-utils';
 export * from './types/dictionary';
+export * from './file/file-utils';

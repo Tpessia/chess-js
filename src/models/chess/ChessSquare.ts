@@ -1,9 +1,9 @@
-import { ChessCoordinate, chessCoordinateFromMatrixIndex } from './ChessCoordinate';
+import { ChessCoordinate, chessCoordinateFromMatrix } from './ChessCoordinate';
 import { ChessPieceBase } from './ChessPiece';
 
 export class ChessSquare {
-    rIndex: number;
-    cIndex: number;
+    rowIndex: number;
+    colIndex: number;
     coordinate: ChessCoordinate;
 
     piece?: ChessPieceBase;
@@ -11,11 +11,13 @@ export class ChessSquare {
     numberLabel?: string;
     letterLabel?: string;
 
-    constructor(rIndex: number, cIndex: number) {
-        this.rIndex = rIndex;
-        this.cIndex = cIndex;
-        this.coordinate = chessCoordinateFromMatrixIndex(rIndex, cIndex);
-        this.numberLabel = cIndex === 0 ? `${rIndex + 1}` : undefined;
-        this.letterLabel = rIndex === 7 ? 'hgfedcba'[cIndex] : undefined;
+    constructor(rowIndex: number, colIndex: number, piece?: ChessPieceBase) {
+        this.rowIndex = rowIndex;
+        this.colIndex = colIndex;
+        this.piece = piece;
+
+        this.coordinate = chessCoordinateFromMatrix(rowIndex, colIndex, true)!.coordinate;
+        this.numberLabel = colIndex === 0 ? `${rowIndex + 1}` : undefined;
+        this.letterLabel = rowIndex === 7 ? 'hgfedcba'[colIndex] : undefined;
     }
 }

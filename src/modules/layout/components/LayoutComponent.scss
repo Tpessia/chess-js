@@ -16,12 +16,12 @@
 
         .title {
             color: $color-font2;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             letter-spacing: 3px;
             font-weight: 600;
             
             a {
-                margin: 16px;
+                margin: 12px 0px 11px;
                 display: flex;
                 flex-direction: row;
                 align-items: center;
@@ -117,7 +117,7 @@
         flex-direction: column;
         flex: 1;
         overflow: auto;
-        padding: 15px 20px 15px;
+        padding: 20px;
         position: relative;
 
         @media (max-width: 767px) {
