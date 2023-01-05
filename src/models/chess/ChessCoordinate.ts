@@ -20,10 +20,10 @@ const _chessCoordinateFromMatrixMap: NumberDictionary<NumberDictionary<ChessCoor
     return acc;
 }, {} as NumberDictionary<NumberDictionary<ChessCoordinateMatrix>>);
 
-export const chessCoordinateToMatrix = (coord: ChessCoordinate) => {
+export const calcChessCoordinate = (coord: ChessCoordinate) => {
     return _chessCoordinateToMatrixMap[coord];
 };
 
-export const chessCoordinateFromMatrix = (rowIndex: number, colIndex: number, validate: boolean = false) => {
+export const calcChessMatrix = (rowIndex: number, colIndex: number, validate: boolean = false) => {
     return _chessCoordinateFromMatrixMap[rowIndex]?.[colIndex] ?? (validate ? throwExpression('Invalid chessBoard index') : undefined);
 };

@@ -3,6 +3,12 @@ import { ChessPieceBase } from './ChessPiece';
 
 export type ChessMoveDirection = 1 | -1;
 
+export enum ChessMoveWarning {
+    Check = 'Check',
+    Checkmate = 'Checkmate',
+    Stalemate = 'Stalemate',
+}
+
 export class ChessMove {
     piece: ChessPieceBase;
     originCoordinate: ChessCoordinate;
