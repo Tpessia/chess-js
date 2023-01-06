@@ -75,26 +75,26 @@ export class ChessBoard {
 
         const moves = [move, ...(move.sideEffects ?? [])];
 
-        for (let move of moves) {
-            const square = this.getSquare(move.originCoordinate);
+        for (let m of moves) {
+            const square = this.getSquare(m.originCoordinate);
             const piece = square.piece;
     
             if (piece == null) throw new Error(`Invalid movement, no piece at ${square.coordinate}`);
             if (piece.color !== this.playingColor) throw new Error(`Invalid movement, wrong piece color: ${piece.color}`);
     
-            const targetSquare = this.getSquare(move.targetCoordinate);
+            const targetSquare = this.getSquare(m.targetCoordinate);
             const capture = targetSquare.piece;
     
-            if (capture?.color === piece.color) throw new Error(`Invalid movement, cannot capture pieces of same color at ${move.targetCoordinate}`);
+            if (capture?.color === piece.color) throw new Error(`Invalid movement, cannot capture pieces of same color at ${m.targetCoordinate}`);
     
             square.piece = undefined;
             targetSquare.piece = piece;
+
+            // TODO: improve recreation? fucked by cloneDeep
+            if (m === move) move = new ChessMove(piece, move.originCoordinate, move.targetCoordinate, capture, move.sideEffects);
         }
 
         // HISTORY
-
-        // TODO: improve recreation?
-        move = new ChessMove(move.piece, move.originCoordinate, move.targetCoordinate, move.capture, move.sideEffects);
 
         this.pushMove(move);
 
