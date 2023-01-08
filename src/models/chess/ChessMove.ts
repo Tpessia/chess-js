@@ -1,22 +1,29 @@
 import { ChessCoordinate } from './ChessCoordinate';
-import { ChessPieceBase } from './ChessPiece';
+import { ChessPiece } from './ChessPiece';
 
 export type ChessMoveDirection = 1 | -1;
 
 export enum ChessMoveWarning {
+    None = 'None',
     Check = 'Check',
     Checkmate = 'Checkmate',
     Stalemate = 'Stalemate',
 }
 
+export enum ChessMoveSafe {
+    KingMove = 'KingMove',
+    PieceKill = 'PieceKill',
+    PieceObstruction = 'PieceObstruction',
+}
+
 export class ChessMove {
-    piece: ChessPieceBase;
+    piece: ChessPiece;
     originCoordinate: ChessCoordinate;
     targetCoordinate: ChessCoordinate;
-    capture?: ChessPieceBase;
+    capture?: ChessPiece;
     sideEffects?: ChessMove[];
 
-    constructor(piece: ChessPieceBase, originCoordinate: ChessCoordinate, targetCoordinate: ChessCoordinate, capture?: ChessPieceBase, sideEffects?: ChessMove[]) {
+    constructor(piece: ChessPiece, originCoordinate: ChessCoordinate, targetCoordinate: ChessCoordinate, capture?: ChessPiece, sideEffects?: ChessMove[]) {
         this.piece = piece;
         this.originCoordinate = originCoordinate;
         this.targetCoordinate = targetCoordinate;
@@ -25,7 +32,7 @@ export class ChessMove {
     }
 
     toString() {
-        return `${this.piece.symbol}${this.capture ? 'x' : ''}${this.targetCoordinate}`;
+        return `${this.piece.symbol}${this.capture ? 'x' : ''}${this.targetCoordinate.code}`;
     }
 }
 

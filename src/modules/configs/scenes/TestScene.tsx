@@ -1,5 +1,4 @@
 import { NotificationService } from '@/services/NotificationService';
-import { Link } from 'react-router-dom';
 import './TestScene.scss';
 
 const TestScene: React.FC = () => {

@@ -1,23 +1,20 @@
-import { ChessCoordinate, calcChessMatrix } from './ChessCoordinate';
-import { ChessPieceBase } from './ChessPiece';
+import { calcChessCoordinate } from '@/models/chess/ChessBoardMatrix';
+import { ChessCoordinate } from './ChessCoordinate';
+import { ChessPiece } from './ChessPiece';
 
 export class ChessSquare {
-    rowIndex: number;
-    colIndex: number;
     coordinate: ChessCoordinate;
 
-    piece?: ChessPieceBase;
+    piece?: ChessPiece;
 
-    numberLabel?: string;
-    letterLabel?: string;
+    numberLabel: string;
+    letterLabel: string;
 
-    constructor(rowIndex: number, colIndex: number, piece?: ChessPieceBase) {
-        this.rowIndex = rowIndex;
-        this.colIndex = colIndex;
+    constructor(rowIndex: number, colIndex: number, piece?: ChessPiece) {
         this.piece = piece;
 
-        this.coordinate = calcChessMatrix(rowIndex, colIndex, true)!.coordinate;
-        this.numberLabel = colIndex === 0 ? `${rowIndex + 1}` : undefined;
-        this.letterLabel = rowIndex === 7 ? 'hgfedcba'[colIndex] : undefined;
+        this.coordinate = calcChessCoordinate(rowIndex, colIndex, true)!;
+        this.numberLabel = `${8 - rowIndex}`;
+        this.letterLabel = 'abcdefgh'[colIndex];
     }
 }

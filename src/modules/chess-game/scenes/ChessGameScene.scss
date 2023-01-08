@@ -107,6 +107,7 @@
 
                 .number-label,
                 .letter-label {
+                    display: none;
                     position: absolute;
                     padding: 5px;
                     font-size: .6rem;
@@ -121,6 +122,18 @@
                 .letter-label {
                     bottom: 0;
                     right: 0;
+                }
+
+                &:nth-child(8n+1) {
+                    .number-label {
+                        display: inline-block;
+                    }
+                }
+
+                &:nth-child(n+57) {
+                    .letter-label {
+                        display: inline-block;
+                    }
                 }
             }
         }

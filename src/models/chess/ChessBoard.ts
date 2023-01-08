@@ -1,59 +1,69 @@
-import { EnumDictionary, StrictEnumDictionary } from '@/utils';
+import { calcChessCoordinate, calcChessCoordinateByCode, chessBoardMatrixDict } from '@/models/chess/ChessBoardMatrix';
+import { ChessBoardMatrix, ChessBoardSnapshot } from '@/models/chess/ChessBoardSnapshot';
+import { EnumDictionary } from '@/utils';
 import { cloneDeep } from 'lodash-es';
-import { ChessCoordinate, calcChessMatrix, calcChessCoordinate } from './ChessCoordinate';
-import { ChessMove, ChessMoveWarning } from './ChessMove';
-import { ChessPieceBase, ChessPieceBishop, ChessPieceKing, ChessPieceKnight, ChessPiecePawn, ChessPieceQueen, ChessPieceRook } from './ChessPiece';
-import { ChessPieceColor, ChessPieceType } from './ChessPieceType';
+import { ChessCoordinate, ChessCoordinateCode } from './ChessCoordinate';
+import { ChessMove, ChessMoveSafe, ChessMoveWarning } from './ChessMove';
+import { ChessPiece } from './ChessPiece';
+import { ChessPieceColor, ChessPieceName } from './ChessPieceType';
 import { ChessSquare } from './ChessSquare';
 
-export type ChessBoardMatrix = ChessSquare[][];
-export type ChessBoardMap = StrictEnumDictionary<ChessCoordinate, ChessSquare>;
-
 export class ChessBoard {
-    initColor: ChessPieceColor;
-    snapshots: ChessBoardMatrix[];
-    moves: ChessMove[];
-
     playerColor: ChessPieceColor;
-    playingColor: ChessPieceColor;
 
-    get boardMatrix() {
+    moves: ChessMove[] = [];
+    movesIndex: EnumDictionary<ChessPieceName, ChessMove[]> = {};
+
+    snapshots: ChessBoardSnapshot[];
+
+    get board() {
         return this.snapshots[this.snapshots.length - 1];
     }
 
-    constructor(playerColor: ChessPieceColor, chessBoard?: ChessBoard) {
-        this.initColor = chessBoard?.initColor ?? ChessPieceColor.White;
-        this.snapshots = chessBoard?.snapshots ?? [initBoard(this.initColor)];
-        this.moves = chessBoard?.moves ?? [];
-        this.playerColor = playerColor;
-        this.playingColor = chessBoard?.playingColor ?? ChessPieceColor.White;
+    get boardView() {
+        let boardMatrix = this.board.matrix;
+
+        if (this.playerColor === ChessPieceColor.Black) {
+            boardMatrix = boardMatrix.slice().reverse();
+            boardMatrix = boardMatrix.map(e => e.slice().reverse());
+        }
+
+        return boardMatrix;
     }
 
-    // Player
-
-    switchPlayer() {
-        // SWITCH PLAYER
-
-        this.playingColor = this.reverseColor(this.playingColor);
-
-        // VERIFY CHECK
-
-        const check = this.verifyCheck();
-
-        if (check != null) alert(check);
+    constructor(playerColor: ChessPieceColor, chessBoard?: ChessBoard) {
+        this.playerColor = playerColor;
+        this.snapshots = chessBoard?.snapshots ?? [initBoardSnapshot(), initBoardSnapshot()]; // Initial + First Move
     }
 
     // Squares
 
     getSquare(coord: ChessCoordinate, snapshotIndex?: number) {
-        const { rowIndex, colIndex } = calcChessCoordinate(coord);
-        return this.snapshots[snapshotIndex ?? this.snapshots.length - 1]?.[rowIndex]?.[colIndex];
+        return this.getSquareByIndex(coord.rowIndex, coord.colIndex, snapshotIndex);
+    }
+
+    getSquareByCode(coordCode: ChessCoordinateCode, snapshotIndex?: number) {
+        const { rowIndex, colIndex } = calcChessCoordinateByCode(coordCode);
+        return this.getSquareByIndex(rowIndex, colIndex, snapshotIndex);
+    }
+
+    getSquareByIndex(rowIndex: number, colIndex: number, snapshotIndex?: number) {
+        return this.snapshots[snapshotIndex ?? this.snapshots.length - 1]?.matrix?.[rowIndex]?.[colIndex];
+    }
+
+    getSquareByPiece(pieceName: ChessPieceName) {
+        return this.board.piecesIndex[pieceName];
+    }
+
+    getSquareByPieceColor(color: ChessPieceColor, nameWhite: ChessPieceName, nameBlack: ChessPieceName) {
+        const pieceName = color === ChessPieceColor.White ? nameWhite : nameBlack;
+        return this.getSquareByPiece(pieceName);
     }
 
     // Pieces
 
-    addPiece(piece: ChessPieceBase, coord: ChessCoordinate) {
-        const square = this.getSquare(coord);
+    addPiece(piece: ChessPiece, coord: ChessCoordinateCode) {
+        const square = this.getSquareByCode(coord);
         square.piece = piece;
     }
 
@@ -61,17 +71,13 @@ export class ChessBoard {
 
     getMoves(square: ChessSquare) {
         if (square.piece == null) return;
-        if (square.piece.color !== this.playingColor) return;
+        if (square.piece.color !== this.board.playingColor) return;
         let moves = square.piece.getMoves(square.coordinate, this);
         return moves;
     }
 
     async movePiece(move: ChessMove) {
-        this.snapshots.push(cloneDeep(this.boardMatrix));
-
         // TODO: ensure move wont cause a checkmate
-
-        // MOVE
 
         const moves = [move, ...(move.sideEffects ?? [])];
 
@@ -80,7 +86,7 @@ export class ChessBoard {
             const piece = square.piece;
     
             if (piece == null) throw new Error(`Invalid movement, no piece at ${square.coordinate}`);
-            if (piece.color !== this.playingColor) throw new Error(`Invalid movement, wrong piece color: ${piece.color}`);
+            if (piece.color !== this.board.playingColor) throw new Error(`Invalid movement, wrong piece color: ${piece.color}`);
     
             const targetSquare = this.getSquare(m.targetCoordinate);
             const capture = targetSquare.piece;
@@ -89,27 +95,37 @@ export class ChessBoard {
     
             square.piece = undefined;
             targetSquare.piece = piece;
-
-            // TODO: improve recreation? fucked by cloneDeep
-            if (m === move) move = new ChessMove(piece, move.originCoordinate, move.targetCoordinate, capture, move.sideEffects);
         }
 
-        // HISTORY
-
         this.pushMove(move);
-
-        // SWITCH PLAYER
-
-        this.switchPlayer();
     }
 
     pushMove(move: ChessMove) {
+        // ADD/INDEX MOVE
+
         this.moves.unshift(move);
-        move.piece.moves.unshift(move);
+
+        const pieceName = move.piece.getName();
+        if (this.movesIndex[pieceName] == null) this.movesIndex[pieceName] = [];
+        this.movesIndex[pieceName]!.push(move);
+
+        // SAVE SNAPSHOT
+
+        this.snapshots.push({
+            matrix: cloneDeep(this.board.matrix),
+            piecesIndex: getPiecesIndex(this.board.matrix),
+            playingColor: this.reverseColor(this.board.playingColor),
+        });
+
+        // VERIFY CHECK
+
+        const check = this.verifyCheck();
+
+        if (check !== ChessMoveWarning.None) alert(check);
     }
 
     getAllNextMoves(color?: ChessPieceColor) {
-        const flatBoard = this.boardMatrix.flat();
+        const flatBoard = this.board.matrix.flat();
         const moves: ChessMove[] = [];
 
         for (let square of flatBoard) {
@@ -122,51 +138,134 @@ export class ChessBoard {
         return moves;
     }
 
-    verifyCheck(): ChessMoveWarning | null {
-        // TODO: verify Stalemate
+    verifyCheck(): ChessMoveWarning {
+        // CHECK
+        // Check:
+        // - Any next enemy move will capture king
+        // Checkmate:
+        // - Any next enemy move will capture king
+        // - Any king movement won't kill the enemy and/or escape enemy capturing territory
+        // - Any friendly movement won't kill the enemy and/or obstruct the enemy's path
+        // Stalemate:
+        // - Any king movement will result in checkmate, but king is not currently under check
 
-        const selfNextMoves = this.getAllNextMoves(this.playingColor);
-        const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.playingColor));
+        // *Checkmate brute-force:
+        // - When under Check loop over every possible friendly movement and check if all still result in check
 
-        const kingSquare = this.boardMatrix.flat().find(e => e.piece?.pieceType === ChessPieceType.King && e.piece?.color === this.playingColor);
+        // TODO: Stalemate
+
+        const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
+        const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.board.playingColor));
+console.log('enemyNextMoves', enemyNextMoves);
+
+        const kingSquare = this.getSquareByPieceColor(this.board.playingColor, ChessPieceName.e1WhiteKing, ChessPieceName.e8BlackKing);
 
         if (kingSquare?.piece == null) throw new Error('King not found');
 
-        const hasCheck = enemyNextMoves.some(e => e.targetCoordinate === kingSquare.coordinate);
+        // Any next enemy move that will capture the king
+        const checks = enemyNextMoves.filter(e => e.capture?.getName() === kingSquare.piece!.getName());
+console.log('checks', checks);
 
-        // TODO: check if other piece can kill the attacker
+        if (checks.length > 0) {
+            const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
+console.log('nextKingMoves', nextKingMoves);
 
-        if (hasCheck) {
-            const nextKingMoves = kingSquare.piece.getMoves(kingSquare.coordinate, this);
-            nextKingMoves.unshift(new ChessMove(kingSquare.piece, kingSquare.coordinate, kingSquare.coordinate));
+            let safeMoves: [ChessMoveSafe, ChessMove][] = [];
 
-            let isCheckMate = true;
-
-            for (let move of nextKingMoves) {
-                const possibleChecks = enemyNextMoves.filter(e => e.targetCoordinate === move.targetCoordinate);
-console.log('move',move)
-console.log('possibleChecks',possibleChecks)
-
-                // TODO: selfNextMoves can be used only once per piece (one piece can't kill 2 others)
-                const isCheck = possibleChecks.length > 0;
-                const areKillableNow = possibleChecks.every(e => selfNextMoves.some(f => e.originCoordinate === f.targetCoordinate));
-                const areKillableNext = possibleChecks.every(e => selfNextMoves.some(f => e.targetCoordinate === f.targetCoordinate));
-
-                isCheckMate = isCheckMate && (isCheck && !(areKillableNow || areKillableNext));
-console.log('isCheck',isCheck,'areKillableNow',areKillableNow,'areKillableNext',areKillableNext)
-                if (!isCheckMate) return ChessMoveWarning.Check;
+            for (let nextKingMove of nextKingMoves) { // TODO: check if new move won't create new check
+                // Check if any king movement will kill the enemy or escape enemy capturing territory
+                const checkSafe = enemyNextMoves.every(e => e.targetCoordinate !== nextKingMove.targetCoordinate || nextKingMove.targetCoordinate === e.originCoordinate);
+                if (checkSafe) safeMoves.push([ChessMoveSafe.KingMove, nextKingMove]);
             }
 
-            return isCheckMate ? ChessMoveWarning.Checkmate : ChessMoveWarning.Check;
+            const nextOtherMoves = selfNextMoves.filter(e => e.piece.getName() !== kingSquare.piece!.getName());
+
+            for (let nextOtherMove of nextOtherMoves) { // TODO: check if new move won't create new check
+                // Check if any friendly movement will kill the enemy or obstruct the enemy's path
+
+                const checkSafeByKill = checks.every(e => nextOtherMove.targetCoordinate === e.originCoordinate);
+                if (checkSafeByKill) safeMoves.push([ChessMoveSafe.PieceKill, nextOtherMove]);
+
+                const checkSafeByObstruction = checks.every(e => this.projectPath(e.originCoordinate, e.targetCoordinate).includes(nextOtherMove.targetCoordinate));
+                if (checkSafeByObstruction) safeMoves.push([ChessMoveSafe.PieceObstruction, nextOtherMove]);
+            }
+
+console.log('safeMoves', safeMoves);
+            return safeMoves.length > 0 ? ChessMoveWarning.Check : ChessMoveWarning.Checkmate;
         }
 
-        return hasCheck ? ChessMoveWarning.Check : null;
+        return ChessMoveWarning.None;
+    }
+
+    // verifyCheck(): ChessMoveWarning | null {
+    //     // TODO: verify Stalemate
+
+    //     const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
+    //     const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.board.playingColor));
+
+    //     const kingSquare = this.board.matrix.flat().find(e => e.piece?.type === ChessPieceType.King && e.piece?.color === this.board.playingColor);
+
+    //     if (kingSquare?.piece == null) throw new Error('King not found');
+
+    //     const hasCheck = enemyNextMoves.some(e => e.targetCoordinate === kingSquare.coordinate);
+
+    //     // TODO: check if other piece can kill the attacker
+
+    //     if (hasCheck) {
+    //         const nextKingMoves = kingSquare.piece.getMoves(kingSquare.coordinate, this);
+    //         nextKingMoves.unshift(new ChessMove(kingSquare.piece, kingSquare.coordinate, kingSquare.coordinate));
+
+    //         let isCheckMate = true;
+
+    //         for (let move of nextKingMoves) {
+    //             const possibleChecks = enemyNextMoves.filter(e => e.targetCoordinate === move.targetCoordinate);
+
+    //             // TODO: selfNextMoves can be used only once per piece (one piece can't kill 2 others)
+    //             const isCheck = possibleChecks.length > 0;
+    //             const areKillableNow = possibleChecks.every(e => selfNextMoves.some(f => e.originCoordinate === f.targetCoordinate));
+    //             const areKillableNext = possibleChecks.every(e => selfNextMoves.some(f => e.targetCoordinate === f.targetCoordinate));
+
+    //             isCheckMate = isCheckMate && (isCheck && !(areKillableNow || areKillableNext));
+
+    //             if (!isCheckMate) return ChessMoveWarning.Check;
+    //         }
+
+    //         return isCheckMate ? ChessMoveWarning.Checkmate : ChessMoveWarning.Check;
+    //     }
+
+    //     return hasCheck ? ChessMoveWarning.Check : null;
+    // }
+
+    // Simulate
+
+    projectPath(coord: ChessCoordinate, nextCoord: ChessCoordinate) {
+        let coords: ChessCoordinate[] = [];
+
+        const castDirection = (direction: number) => direction > 0 ? 1 : direction < 0 ? -1 : 0;
+
+        const rowDirection = castDirection(nextCoord.rowIndex - coord.rowIndex);
+        const colDirection = castDirection(nextCoord.colIndex - coord.colIndex);
+
+        let count = 1;
+        while (true) {
+            const newCoord = calcChessCoordinate(coord.rowIndex + rowDirection * count, coord.colIndex + colDirection * count);
+            if (newCoord == null) break;
+
+            coords.push(newCoord);
+
+            const square = this.getSquareByCode(newCoord.code);
+            if (square.piece != null) break;
+
+            count++;
+        }
+
+        return coords;
     }
 
     // Utils
 
     toString() {
-        return this.boardMatrix.map(e => e.map(f => f.piece?.symbol ?? '.').join(' ')).join('\n');
+        return this.board.matrix.map(e => e.map(f => f.piece?.symbol ?? '.').join(' ')).join('\n');
     }
 
     private reverseColor(color: ChessPieceColor) {
@@ -174,13 +273,16 @@ console.log('isCheck',isCheck,'areKillableNow',areKillableNow,'areKillableNext',
     }
 }
 
-function initBoard(initColor: ChessPieceColor) {
-    const whitePiecesMatrix: EnumDictionary<ChessCoordinate, ChessPieceBase> = { [ChessCoordinate.a1]: new ChessPieceRook(ChessPieceColor.Black), [ChessCoordinate.b1]: new ChessPieceKnight(ChessPieceColor.Black), [ChessCoordinate.c1]: new ChessPieceBishop(ChessPieceColor.Black), [ChessCoordinate.d1]: new ChessPieceKing(ChessPieceColor.Black), [ChessCoordinate.e1]: new ChessPieceQueen(ChessPieceColor.Black), [ChessCoordinate.f1]: new ChessPieceBishop(ChessPieceColor.Black), [ChessCoordinate.g1]: new ChessPieceKnight(ChessPieceColor.Black), [ChessCoordinate.h1]: new ChessPieceRook(ChessPieceColor.Black), [ChessCoordinate.a2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.b2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.c2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.d2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.e2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.f2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.g2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.h2]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.a8]: new ChessPieceRook(ChessPieceColor.White), [ChessCoordinate.b8]: new ChessPieceKnight(ChessPieceColor.White), [ChessCoordinate.c8]: new ChessPieceBishop(ChessPieceColor.White), [ChessCoordinate.d8]: new ChessPieceKing(ChessPieceColor.White), [ChessCoordinate.e8]: new ChessPieceQueen(ChessPieceColor.White), [ChessCoordinate.f8]: new ChessPieceBishop(ChessPieceColor.White), [ChessCoordinate.g8]: new ChessPieceKnight(ChessPieceColor.White), [ChessCoordinate.h8]: new ChessPieceRook(ChessPieceColor.White), [ChessCoordinate.a7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.b7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.c7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.d7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.e7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.f7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.g7]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.h7]: new ChessPiecePawn(ChessPieceColor.White) };
-    const blackPiecesMatrix: EnumDictionary<ChessCoordinate, ChessPieceBase> = { [ChessCoordinate.a1]: new ChessPieceRook(ChessPieceColor.White), [ChessCoordinate.b1]: new ChessPieceKnight(ChessPieceColor.White), [ChessCoordinate.c1]: new ChessPieceBishop(ChessPieceColor.White), [ChessCoordinate.d1]: new ChessPieceKing(ChessPieceColor.White), [ChessCoordinate.e1]: new ChessPieceQueen(ChessPieceColor.White), [ChessCoordinate.f1]: new ChessPieceBishop(ChessPieceColor.White), [ChessCoordinate.g1]: new ChessPieceKnight(ChessPieceColor.White), [ChessCoordinate.h1]: new ChessPieceRook(ChessPieceColor.White), [ChessCoordinate.a2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.b2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.c2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.d2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.e2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.f2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.g2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.h2]: new ChessPiecePawn(ChessPieceColor.White), [ChessCoordinate.a8]: new ChessPieceRook(ChessPieceColor.Black), [ChessCoordinate.b8]: new ChessPieceKnight(ChessPieceColor.Black), [ChessCoordinate.c8]: new ChessPieceBishop(ChessPieceColor.Black), [ChessCoordinate.d8]: new ChessPieceKing(ChessPieceColor.Black), [ChessCoordinate.e8]: new ChessPieceQueen(ChessPieceColor.Black), [ChessCoordinate.f8]: new ChessPieceBishop(ChessPieceColor.Black), [ChessCoordinate.g8]: new ChessPieceKnight(ChessPieceColor.Black), [ChessCoordinate.h8]: new ChessPieceRook(ChessPieceColor.Black), [ChessCoordinate.a7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.b7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.c7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.d7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.e7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.f7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.g7]: new ChessPiecePawn(ChessPieceColor.Black), [ChessCoordinate.h7]: new ChessPiecePawn(ChessPieceColor.Black) };
+function initBoardSnapshot(): ChessBoardSnapshot {
+    const boardMatrix: ChessBoardMatrix = [...Array(8)].map((_, i) => [...Array(8)].map((_, j) => new ChessSquare(i, j, chessBoardMatrixDict[calcChessCoordinate(i, j, true)!.code]?.piece)));
 
-    const piecesMatrix = initColor === ChessPieceColor.White ? whitePiecesMatrix : blackPiecesMatrix;
+    return {
+        playingColor: ChessPieceColor.White,
+        matrix: boardMatrix,
+        piecesIndex: getPiecesIndex(boardMatrix),
+    };
+}
 
-    const boardMatrix: ChessBoardMatrix = [...Array(8)].map((_, i) => [...Array(8)].map((_, j) => new ChessSquare(i, j, piecesMatrix[calcChessMatrix(i, j, true)!.coordinate])));
-
-    return boardMatrix;
+function getPiecesIndex(boardMatrix: ChessBoardMatrix) {
+    return boardMatrix.flat().filter(e => e.piece != null).reduce((acc, val) => ({ ...acc, [val.piece!.getName()]: val }), {} as EnumDictionary<ChessPieceName, ChessSquare>);
 }

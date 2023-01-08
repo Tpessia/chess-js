@@ -3,14 +3,14 @@ import { ChessMove } from '@/models/chess/ChessMove';
 import { ChessPieceColor } from '@/models/chess/ChessPieceType';
 import { ChessSquare } from '@/models/chess/ChessSquare';
 import { exportJson, importJson } from '@/utils';
+import useLazyRef from '@/utils/reactjs/hooks/useLazyRef';
 import useStateUpdate from '@/utils/reactjs/hooks/useUpdateState';
 import clsx from 'clsx';
-import { cloneDeep } from 'lodash-es';
 import React, { useState } from 'react';
 import './ChessGameScene.scss';
 
 interface State {
-    board: ChessBoard;
+    chessBoardVersion: number,
     highlight?: {
         origin: ChessSquare,
         targets: ChessMove[],
@@ -19,47 +19,54 @@ interface State {
 
 function initState(): State {
     return {
-        board: new ChessBoard(ChessPieceColor.White),
+        chessBoardVersion: 0,
         highlight: undefined,
     };
 }
 
 const ChessGameScene: React.FC = () => {
     // State
-
+    
     const [state, setState] = useState<State>(() => initState());
     const updateState = useStateUpdate(setState);
+    
+    const chessBoardRef = useLazyRef<ChessBoard>(() => new ChessBoard(ChessPieceColor.White));
+    const chessBoard = chessBoardRef.current;
 
     // Functions
 
+    const refreshChessBoard = (newChessBoard?: ChessBoard) => {
+        if (newChessBoard != null) chessBoardRef.current = newChessBoard;
+        updateState({ chessBoardVersion: { $set: state.chessBoardVersion + 1 }, highlight: { $set: undefined } });
+    };
+
     const highlightMoves = (square: ChessSquare) => {
-        const moves = state.board.getMoves(square);
+        const moves = chessBoard.getMoves(square);
         const highlight = moves != null ? { origin: square, targets: moves } : undefined;
         updateState({ highlight: { $set: highlight } });
     };
 
     const movePiece = async (move: ChessMove) => {
-        const newBoard = cloneDeep(state.board);
-        await newBoard.movePiece(move);
-        updateState({ board: { $set: newBoard }, highlight: { $set: undefined } });
+        await chessBoard.movePiece(move);
+        refreshChessBoard();
     };
 
     const resetBoard = () => {
-        updateState({ board: { $set: new ChessBoard(ChessPieceColor.White) } });
+        refreshChessBoard(new ChessBoard(chessBoard.playerColor));
     };
 
     // TODO: import/export
     const exportBoard = () => {
-        exportJson(state.board, 'chess-board');
+        exportJson(chessBoard, 'chess-board');
     };
 
     const importBoard = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e || !e.target || !e.target.files || e.target.files.length === 0) return;
 
-        const chessBoard = await importJson(e.target.files[0]);
+        const newChessBoard = await importJson(e.target.files[0]);
         // e.target.value = null;
 
-        updateState({ board: { $set: chessBoard } });
+        refreshChessBoard(newChessBoard);
     };
 
     const chessMoveClass = (move: ChessMove) => clsx('chess-move', `chess-move-${move.piece.color.toLocaleLowerCase()}`);
@@ -68,7 +75,7 @@ const ChessGameScene: React.FC = () => {
 
     // Components
 
-    const movesComponent = state.board.moves.map((e, i, arr) => (
+    const movesComponent = chessBoard.moves.map((e, i, arr) => (
         <div key={i} className={chessMoveClass(e)}>
             <span className="chess-move-color">{`[${e.piece.color[0]}]`}</span>
             <span className="chess-move-number">{arr.length - i}.</span>&nbsp;
@@ -82,7 +89,9 @@ const ChessGameScene: React.FC = () => {
         <div id="chess-game">
             <div className="chess-info">
                 <div>
-                    Playing: {state.board.playingColor}
+                    Player: {chessBoard.playerColor}
+                    <br />
+                    Playing: {chessBoard.board.playingColor}
                 </div>
                 <div>
                     <button type="button" className="btn" onClick={resetBoard}>Reset</button>
@@ -96,15 +105,15 @@ const ChessGameScene: React.FC = () => {
             </div>
             <div className="chess-board">
                 <div className="chess-grid">
-                    {state.board.boardMatrix.flat().map((e, i) => {
-                        const moveHighlight = state.highlight?.targets.find(f => e.coordinate === f.targetCoordinate);
+                    {chessBoard.boardView.flat().map((e, i) => {
+                        const moveHighlight = state.highlight?.targets.find(f => e.coordinate.code === f.targetCoordinate.code);
                         const onClick = () => moveHighlight ? movePiece(moveHighlight) : highlightMoves(e);
 
                         return (
                             <span key={i} className={chessSquareClass(e, !!moveHighlight)} onClick={onClick}>
                                 {e.piece?.symbol}
-                                {e.numberLabel && <span className="number-label">{e.numberLabel}</span>}
-                                {e.letterLabel && <span className="letter-label">{e.letterLabel}</span>}
+                                {<span className="number-label">{e.numberLabel}</span>}
+                                {<span className="letter-label">{e.letterLabel}</span>}
                             </span>
                         );
                     })}
