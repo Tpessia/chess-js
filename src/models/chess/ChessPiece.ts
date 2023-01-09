@@ -49,11 +49,17 @@ export abstract class ChessPiece {
     }
 
     getMovesHist(chessBoard: ChessBoard) {
-        return chessBoard.movesIndex[this.getName()] ?? [];
+        return chessBoard.movesIndex()[this.getName()] ?? [];
     }
 
     getDirection() {
         return this.color === ChessPieceColor.White ? -1 : 1;
+    }
+
+    // Utils
+
+    toString() { // Needed for memoize
+        return this.getName();
     }
 }
 

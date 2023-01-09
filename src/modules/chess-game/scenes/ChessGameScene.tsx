@@ -47,7 +47,17 @@ const ChessGameScene: React.FC = () => {
     };
 
     const movePiece = async (move: ChessMove) => {
-        await chessBoard.movePiece(move);
+        chessBoard.movePiece(move);
+        refreshChessBoard();
+    };
+
+    const undoMove = async () => {
+        chessBoard.undoMove();
+        refreshChessBoard();
+    };
+
+    const redoMove = async () => {
+        chessBoard.redoMove();
         refreshChessBoard();
     };
 
@@ -75,7 +85,7 @@ const ChessGameScene: React.FC = () => {
 
     // Components
 
-    const movesComponent = chessBoard.moves.map((e, i, arr) => (
+    const movesComponent = chessBoard.moves().map((e, i, arr) => (
         <div key={i} className={chessMoveClass(e)}>
             <span className="chess-move-color">{`[${e.piece.color[0]}]`}</span>
             <span className="chess-move-number">{arr.length - i}.</span>&nbsp;
@@ -95,6 +105,11 @@ const ChessGameScene: React.FC = () => {
                 </div>
                 <div>
                     <button type="button" className="btn" onClick={resetBoard}>Reset</button>
+                </div>
+                <div>
+                    <button type="button" className="btn" onClick={undoMove} disabled={!chessBoard.canUndoMove}>Undo</button>
+                    &nbsp;&nbsp;
+                    <button type="button" className="btn" onClick={redoMove} disabled={!chessBoard.canRedoMove}>Redo</button>
                 </div>
                 {/* <div>
                     <button type="button" className="btn" onClick={exportBoard}>Export</button>

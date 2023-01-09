@@ -1,8 +1,11 @@
 import { ChessCoordinate, ChessCoordinateCode } from '@/models/chess/ChessCoordinate';
 import { ChessPiece, ChessPieceBishop, ChessPieceKing, ChessPieceKnight, ChessPiecePawn, ChessPieceQueen, ChessPieceRook } from '@/models/chess/ChessPiece';
 import { ChessPieceColor } from '@/models/chess/ChessPieceType';
+import { ChessSquare } from '@/models/chess/ChessSquare';
 import { EnumDictionary, NumberDictionary, StrictEnumDictionary } from '@/utils';
 import { throwExpression } from '@/utils/error/throw-expression';
+
+export type ChessBoardMatrix = ChessSquare[][];
 
 type CoordinatePiece = { coordinate: ChessCoordinateCode, piece?: ChessPiece };
 
@@ -109,3 +112,8 @@ export const calcChessCoordinateByCode = (coordCode: ChessCoordinateCode) => {
 export const calcChessCoordinate = (rowIndex: number, colIndex: number, validate: boolean = false) => {
     return _chessCoordinateIndexMap[rowIndex]?.[colIndex] ?? (validate ? throwExpression('Invalid chessBoard index') : undefined);
 };
+
+export function initBoardMatrix(): ChessBoardMatrix {
+    const boardMatrix: ChessBoardMatrix = [...Array(8)].map((_, i) => [...Array(8)].map((_, j) => new ChessSquare(i, j, chessBoardMatrixDict[calcChessCoordinate(i, j, true)!.code]?.piece)));
+    return boardMatrix;
+}

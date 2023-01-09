@@ -3,19 +3,6 @@ import { ChessPiece } from './ChessPiece';
 
 export type ChessMoveDirection = 1 | -1;
 
-export enum ChessMoveWarning {
-    None = 'None',
-    Check = 'Check',
-    Checkmate = 'Checkmate',
-    Stalemate = 'Stalemate',
-}
-
-export enum ChessMoveSafe {
-    KingMove = 'KingMove',
-    PieceKill = 'PieceKill',
-    PieceObstruction = 'PieceObstruction',
-}
-
 export class ChessMove {
     piece: ChessPiece;
     originCoordinate: ChessCoordinate;
@@ -31,8 +18,10 @@ export class ChessMove {
         this.sideEffects = sideEffects;
     }
 
-    toString() {
-        return `${this.piece.symbol}${this.capture ? 'x' : ''}${this.targetCoordinate.code}`;
+    // Utils
+
+    toString() { // Needed for memoize
+        return `${this.piece.symbol}${this.capture != null ? 'x' : ''}${this.targetCoordinate.code}`;
     }
 }
 

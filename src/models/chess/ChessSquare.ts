@@ -17,4 +17,10 @@ export class ChessSquare {
         this.numberLabel = `${8 - rowIndex}`;
         this.letterLabel = 'abcdefgh'[colIndex];
     }
+
+    // Utils
+
+    toString() { // Needed for memoize
+        return `${this.coordinate.code}:${this.piece?.getName()}`;
+    }
 }

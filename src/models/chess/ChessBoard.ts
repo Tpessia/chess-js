@@ -1,9 +1,11 @@
-import { calcChessCoordinate, calcChessCoordinateByCode, chessBoardMatrixDict } from '@/models/chess/ChessBoardMatrix';
-import { ChessBoardMatrix, ChessBoardSnapshot } from '@/models/chess/ChessBoardSnapshot';
+import { calcChessCoordinate, calcChessCoordinateByCode, initBoardMatrix } from '@/models/chess/ChessBoardMatrix';
+import { ChessBoardSnapshot } from '@/models/chess/ChessBoardSnapshot';
+import { ChessCheck, ChessCheckMoveType, ChessCheckType } from '@/models/chess/ChessCheck';
 import { EnumDictionary } from '@/utils';
 import { cloneDeep } from 'lodash-es';
+import memoize from 'memoizee';
 import { ChessCoordinate, ChessCoordinateCode } from './ChessCoordinate';
-import { ChessMove, ChessMoveSafe, ChessMoveWarning } from './ChessMove';
+import { ChessMove } from './ChessMove';
 import { ChessPiece } from './ChessPiece';
 import { ChessPieceColor, ChessPieceName } from './ChessPieceType';
 import { ChessSquare } from './ChessSquare';
@@ -11,10 +13,31 @@ import { ChessSquare } from './ChessSquare';
 export class ChessBoard {
     playerColor: ChessPieceColor;
 
-    moves: ChessMove[] = [];
-    movesIndex: EnumDictionary<ChessPieceName, ChessMove[]> = {};
-
     snapshots: ChessBoardSnapshot[];
+    undoneSnapshots: ChessBoardSnapshot[] = [];
+
+    isSimulating: boolean = false;
+
+    constructor(playerColor: ChessPieceColor, chessBoard?: ChessBoard) {
+        this.playerColor = playerColor;
+        this.snapshots = chessBoard?.snapshots ?? [
+            new ChessBoardSnapshot(ChessPieceColor.White, initBoardMatrix()), // Prestine board for reference
+            new ChessBoardSnapshot(ChessPieceColor.White, initBoardMatrix()), // Playable board
+        ];
+    }
+
+    // Accessors
+
+    moves = () => this.movesFn(this.snapshots);
+    private movesFn = memoize((snapshots: ChessBoardSnapshot[]) => snapshots.filter(e => e?.move != null).map(e => e.move as ChessMove), { primitive: true, max: 1 });
+
+    movesIndex = () => this.movesIndexFn(this.moves());
+    private movesIndexFn = memoize((moves: ChessMove[]) => moves.reduce((acc, val) => {
+        const pieceName = val.piece.getName();
+        if (acc[pieceName] == null) acc[pieceName] = [];
+        acc[pieceName]!.push(val);
+        return acc;
+    }, {} as EnumDictionary<ChessPieceName, ChessMove[]>), { primitive: true, max: 1 });
 
     get board() {
         return this.snapshots[this.snapshots.length - 1];
@@ -31,9 +54,12 @@ export class ChessBoard {
         return boardMatrix;
     }
 
-    constructor(playerColor: ChessPieceColor, chessBoard?: ChessBoard) {
-        this.playerColor = playerColor;
-        this.snapshots = chessBoard?.snapshots ?? [initBoardSnapshot(), initBoardSnapshot()]; // Initial + First Move
+    get canUndoMove() {
+        return this.snapshots.length > 2;
+    }
+
+    get canRedoMove() {
+        return this.undoneSnapshots.length > 0;
     }
 
     // Squares
@@ -52,7 +78,7 @@ export class ChessBoard {
     }
 
     getSquareByPiece(pieceName: ChessPieceName) {
-        return this.board.piecesIndex[pieceName];
+        return this.board.piecesIndex()[pieceName];
     }
 
     getSquareByPieceColor(color: ChessPieceColor, nameWhite: ChessPieceName, nameBlack: ChessPieceName) {
@@ -76,7 +102,7 @@ export class ChessBoard {
         return moves;
     }
 
-    async movePiece(move: ChessMove) {
+    movePiece(move: ChessMove) {
         // TODO: ensure move wont cause a checkmate
 
         const moves = [move, ...(move.sideEffects ?? [])];
@@ -85,43 +111,62 @@ export class ChessBoard {
             const square = this.getSquare(m.originCoordinate);
             const piece = square.piece;
     
-            if (piece == null) throw new Error(`Invalid movement, no piece at ${square.coordinate}`);
+            if (piece == null) throw new Error(`Invalid movement, no piece at ${square.coordinate.code}`);
             if (piece.color !== this.board.playingColor) throw new Error(`Invalid movement, wrong piece color: ${piece.color}`);
     
             const targetSquare = this.getSquare(m.targetCoordinate);
             const capture = targetSquare.piece;
-    
+
             if (capture?.color === piece.color) throw new Error(`Invalid movement, cannot capture pieces of same color at ${m.targetCoordinate}`);
     
             square.piece = undefined;
             targetSquare.piece = piece;
         }
 
-        this.pushMove(move);
+        // SAVE MOVE
+
+        this.saveMove(move);
+        this.undoneSnapshots = [];
     }
 
-    pushMove(move: ChessMove) {
-        // ADD/INDEX MOVE
+    saveMove(move?: ChessMove) {
+        this.board.move = move;
 
-        this.moves.unshift(move);
+        const newSnapshot = new ChessBoardSnapshot(this.snapshots.length > 1 ? this.reverseColor(this.board.playingColor) : this.board.playingColor, cloneDeep(this.board.matrix));
+        this.snapshots.push(newSnapshot); // Push empty board
 
-        const pieceName = move.piece.getName();
-        if (this.movesIndex[pieceName] == null) this.movesIndex[pieceName] = [];
-        this.movesIndex[pieceName]!.push(move);
+        if (!this.isSimulating) { // TODO: improve isSimulation check logic
+            newSnapshot.check = this.getCheck();
+            if (newSnapshot.check?.type != null) alert(newSnapshot.check.type);
+        }
+    }
 
-        // SAVE SNAPSHOT
+    undoMove() {
+        // POP SNAPSHOT
 
-        this.snapshots.push({
-            matrix: cloneDeep(this.board.matrix),
-            piecesIndex: getPiecesIndex(this.board.matrix),
-            playingColor: this.reverseColor(this.board.playingColor),
-        });
+        if (!this.canUndoMove) return;
 
-        // VERIFY CHECK
+        this.snapshots.pop()!; // Remove empty board
+        const snapshot = this.snapshots.pop()!; // Pop last move
 
-        const check = this.verifyCheck();
+        // SAVE UNDO
 
-        if (check !== ChessMoveWarning.None) alert(check);
+        this.undoneSnapshots.push(snapshot);
+
+        // SAVE MOVE
+
+        this.saveMove(this.board.move); // Push new snapshot
+    }
+
+    redoMove() {
+        // PUSH SNAPSHOT
+
+        if (!this.canRedoMove) return;
+
+        const snapshot = this.undoneSnapshots.pop()!;
+        this.snapshots.pop()!; // Remove empty board
+        this.snapshots.push(snapshot); // Push redo
+        this.saveMove(snapshot.move);
     }
 
     getAllNextMoves(color?: ChessPieceColor) {
@@ -138,7 +183,7 @@ export class ChessBoard {
         return moves;
     }
 
-    verifyCheck(): ChessMoveWarning {
+    getCheck(): ChessCheck | undefined {
         // CHECK
         // Check:
         // - Any next enemy move will capture king
@@ -154,87 +199,95 @@ export class ChessBoard {
 
         // TODO: Stalemate
 
+        const check: ChessCheck = {
+            type: ChessCheckType.Check,
+            safeMoves: [],
+        };
+
         const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
         const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.board.playingColor));
-console.log('enemyNextMoves', enemyNextMoves);
 
         const kingSquare = this.getSquareByPieceColor(this.board.playingColor, ChessPieceName.e1WhiteKing, ChessPieceName.e8BlackKing);
 
         if (kingSquare?.piece == null) throw new Error('King not found');
 
+        const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
+
         // Any next enemy move that will capture the king
         const checks = enemyNextMoves.filter(e => e.capture?.getName() === kingSquare.piece!.getName());
-console.log('checks', checks);
 
-        if (checks.length > 0) {
-            const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
-console.log('nextKingMoves', nextKingMoves);
-
-            let safeMoves: [ChessMoveSafe, ChessMove][] = [];
-
-            for (let nextKingMove of nextKingMoves) { // TODO: check if new move won't create new check
+        if (checks.length > 0) { // CHECK/MATE
+            for (let nextKingMove of nextKingMoves) { // TODO: check if new move won't create new check (use undo/redo?)
                 // Check if any king movement will kill the enemy or escape enemy capturing territory
                 const checkSafe = enemyNextMoves.every(e => e.targetCoordinate !== nextKingMove.targetCoordinate || nextKingMove.targetCoordinate === e.originCoordinate);
-                if (checkSafe) safeMoves.push([ChessMoveSafe.KingMove, nextKingMove]);
+                if (checkSafe) check.safeMoves.push({ type: ChessCheckMoveType.KingMove, move: nextKingMove });
             }
 
             const nextOtherMoves = selfNextMoves.filter(e => e.piece.getName() !== kingSquare.piece!.getName());
 
-            for (let nextOtherMove of nextOtherMoves) { // TODO: check if new move won't create new check
+            for (let nextOtherMove of nextOtherMoves) { // TODO: check if new move won't create new check (use undo/redo?)
                 // Check if any friendly movement will kill the enemy or obstruct the enemy's path
 
                 const checkSafeByKill = checks.every(e => nextOtherMove.targetCoordinate === e.originCoordinate);
-                if (checkSafeByKill) safeMoves.push([ChessMoveSafe.PieceKill, nextOtherMove]);
+                if (checkSafeByKill) check.safeMoves.push({ type: ChessCheckMoveType.PieceKill, move: nextOtherMove });
 
                 const checkSafeByObstruction = checks.every(e => this.projectPath(e.originCoordinate, e.targetCoordinate).includes(nextOtherMove.targetCoordinate));
-                if (checkSafeByObstruction) safeMoves.push([ChessMoveSafe.PieceObstruction, nextOtherMove]);
+                if (checkSafeByObstruction) check.safeMoves.push({ type: ChessCheckMoveType.PieceObstruction, move: nextOtherMove });
             }
 
-console.log('safeMoves', safeMoves);
-            return safeMoves.length > 0 ? ChessMoveWarning.Check : ChessMoveWarning.Checkmate;
+            if (!this.isSimulating) {
+                this.isSimulating = true;
+
+                for (let simulateMove of [...check.safeMoves]) {
+                    this.movePiece(simulateMove.move);
+
+                    // Fake to verify check again
+                    this.board.playingColor = this.reverseColor(this.board.playingColor);
+                    const reCheck = this.getCheck();
+
+                    // New move causes new check
+                    if (reCheck != null) {
+                        check.safeMoves = check.safeMoves.filter(e => e !== simulateMove);
+                    }
+
+                    this.undoMove();
+                }
+
+                this.isSimulating = false;
+            }
+
+            if (check.safeMoves.length === 0) check.type = ChessCheckType.Checkmate;
+
+            console.log('check', check);
+
+            return check;
         }
+        // else { // STALEMATE
+        //     check.type = ChessCheckType.Stalemate;
 
-        return ChessMoveWarning.None;
+        //     let isStalemate = nextKingMoves.length > 0;
+
+        //     this.isSimulating = true;
+
+        //     for (let nextKingMove of nextKingMoves) {
+        //         this.movePiece(nextKingMove);
+
+        //         // Fake to verify check again
+        //         this.board.playingColor = this.reverseColor(this.board.playingColor);
+        //         const reCheck = this.getCheck();
+
+        //         isStalemate = isStalemate && reCheck != null;
+
+        //         this.undoMove();
+        //     }
+
+        //     this.isSimulating = false;
+
+        //     return isStalemate ? check : undefined;
+        // }
+
+        return undefined;
     }
-
-    // verifyCheck(): ChessMoveWarning | null {
-    //     // TODO: verify Stalemate
-
-    //     const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
-    //     const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.board.playingColor));
-
-    //     const kingSquare = this.board.matrix.flat().find(e => e.piece?.type === ChessPieceType.King && e.piece?.color === this.board.playingColor);
-
-    //     if (kingSquare?.piece == null) throw new Error('King not found');
-
-    //     const hasCheck = enemyNextMoves.some(e => e.targetCoordinate === kingSquare.coordinate);
-
-    //     // TODO: check if other piece can kill the attacker
-
-    //     if (hasCheck) {
-    //         const nextKingMoves = kingSquare.piece.getMoves(kingSquare.coordinate, this);
-    //         nextKingMoves.unshift(new ChessMove(kingSquare.piece, kingSquare.coordinate, kingSquare.coordinate));
-
-    //         let isCheckMate = true;
-
-    //         for (let move of nextKingMoves) {
-    //             const possibleChecks = enemyNextMoves.filter(e => e.targetCoordinate === move.targetCoordinate);
-
-    //             // TODO: selfNextMoves can be used only once per piece (one piece can't kill 2 others)
-    //             const isCheck = possibleChecks.length > 0;
-    //             const areKillableNow = possibleChecks.every(e => selfNextMoves.some(f => e.originCoordinate === f.targetCoordinate));
-    //             const areKillableNext = possibleChecks.every(e => selfNextMoves.some(f => e.targetCoordinate === f.targetCoordinate));
-
-    //             isCheckMate = isCheckMate && (isCheck && !(areKillableNow || areKillableNext));
-
-    //             if (!isCheckMate) return ChessMoveWarning.Check;
-    //         }
-
-    //         return isCheckMate ? ChessMoveWarning.Checkmate : ChessMoveWarning.Check;
-    //     }
-
-    //     return hasCheck ? ChessMoveWarning.Check : null;
-    // }
 
     // Simulate
 
@@ -271,18 +324,4 @@ console.log('safeMoves', safeMoves);
     private reverseColor(color: ChessPieceColor) {
         return color === ChessPieceColor.White ? ChessPieceColor.Black : ChessPieceColor.White;
     }
-}
-
-function initBoardSnapshot(): ChessBoardSnapshot {
-    const boardMatrix: ChessBoardMatrix = [...Array(8)].map((_, i) => [...Array(8)].map((_, j) => new ChessSquare(i, j, chessBoardMatrixDict[calcChessCoordinate(i, j, true)!.code]?.piece)));
-
-    return {
-        playingColor: ChessPieceColor.White,
-        matrix: boardMatrix,
-        piecesIndex: getPiecesIndex(boardMatrix),
-    };
-}
-
-function getPiecesIndex(boardMatrix: ChessBoardMatrix) {
-    return boardMatrix.flat().filter(e => e.piece != null).reduce((acc, val) => ({ ...acc, [val.piece!.getName()]: val }), {} as EnumDictionary<ChessPieceName, ChessSquare>);
 }
