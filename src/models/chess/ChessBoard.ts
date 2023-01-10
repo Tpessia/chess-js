@@ -6,7 +6,7 @@ import { cloneDeep } from 'lodash-es';
 import memoize from 'memoizee';
 import { ChessCoordinate, ChessCoordinateCode } from './ChessCoordinate';
 import { ChessMove } from './ChessMove';
-import { ChessPiece } from './ChessPiece';
+import { ChessPiece, ChessPiecePawn, ChessPieceQueen } from './ChessPiece';
 import { ChessPieceColor, ChessPieceName } from './ChessPieceType';
 import { ChessSquare } from './ChessSquare';
 
@@ -145,8 +145,19 @@ export class ChessBoard {
 
         if (!this.isSimulating) { // TODO: improve isSimulation check logic
             const check = this.getCheck();
-            this.board.check = check;  // TODO: workaround because of undoMove usage on this.getCheck (it resets the real snapshot on second pop)
+            this.board.check = check; // TODO: workaround because of undoMove usage on this.getCheck (it resets the real snapshot on second pop)
             if (this.board.check?.type != null) alert(this.board.check.type);
+        }
+
+        // Promote to Queen
+        // TODO: migrate logic to ChessPiece.ts
+
+        if (move?.piece instanceof ChessPiecePawn) {
+            const shouldPromote = move.piece.color === ChessPieceColor.Black && move.targetCoordinate.rowIndex === 7 || move.piece.color === ChessPieceColor.White && move.targetCoordinate.rowIndex === 0;
+            if (shouldPromote) {
+                const pawnSquare = this.getSquare(move.targetCoordinate);
+                pawnSquare.piece = new ChessPieceQueen(move.piece.color, move.targetCoordinate.code);
+            }
         }
     }
 
@@ -312,8 +323,6 @@ export class ChessBoard {
 
         if (checks.length > 0) return validateCheckmate();
         else return validateStalemate();
-
-        return undefined;
     }
 
     // Simulate

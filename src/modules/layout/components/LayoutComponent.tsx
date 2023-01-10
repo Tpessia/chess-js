@@ -13,7 +13,7 @@ const LayoutComponent: React.FC<PropsWithChildren> = (props) => {
             <div className="layout">
                 <header className="header">
                     <h1 className="title">
-                        <Link to="/">CHEZZ</Link>
+                        <Link to="/">Chess.js</Link>
                     </h1>
 
                     <nav className="desktop-navbar">

@@ -1,7 +1,8 @@
 {
-  "name": "chezz",
+  "name": "chess.js",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://tpessia.github.io/chess-js/",
   "scripts": {
     "setup": "npm install",
     "setup:prod": "npm install --only=prod",
