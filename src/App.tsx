@@ -23,7 +23,7 @@ const App: React.FC = () => {
 
   return (
     <GlobalContext.Provider value={[global, setGlobal]}>
-      <Router>
+      <Router basename={process.env.NODE_ENV === 'development' ? '/' : '/chess-js'}>
         <LayoutComponent>
           <Routes>
             <Route path="/" element={<GameScene />} />

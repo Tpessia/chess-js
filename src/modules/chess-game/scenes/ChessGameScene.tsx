@@ -116,7 +116,8 @@ const ChessGameScene: React.FC = () => {
             <div className="chess-dashboard">
                 <div className="chess-info">
                     {/* <span>Player: {chessBoard.playerColor}</span> */}
-                    <span>Playing: {chessBoard.board.playingColor}</span>
+                    <div style={{marginBottom: '10px'}}>Playing: {chessBoard.board.playingColor}</div>
+                    <div>Human vs Human</div>
                 </div>
                 <div className="chess-controls">
                     <button type="button" className="btn" onClick={resetBoard}>Reset</button>
