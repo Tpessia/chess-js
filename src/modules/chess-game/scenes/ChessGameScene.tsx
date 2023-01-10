@@ -85,7 +85,7 @@ const ChessGameScene: React.FC = () => {
 
     // Components
 
-    const movesComponent = chessBoard.moves().map((e, i, arr) => (
+    const movesComponent = chessBoard.moves().slice().reverse().map((e, i, arr) => ( // TODO: improve linq
         <div key={i} className={chessMoveClass(e)}>
             <span className="chess-move-color">{`[${e.piece.color[0]}]`}</span>
             <span className="chess-move-number">{arr.length - i}.</span>&nbsp;
@@ -97,27 +97,6 @@ const ChessGameScene: React.FC = () => {
 
     return (
         <div id="chess-game">
-            <div className="chess-info">
-                <div>
-                    Player: {chessBoard.playerColor}
-                    <br />
-                    Playing: {chessBoard.board.playingColor}
-                </div>
-                <div>
-                    <button type="button" className="btn" onClick={resetBoard}>Reset</button>
-                </div>
-                <div>
-                    <button type="button" className="btn" onClick={undoMove} disabled={!chessBoard.canUndoMove}>Undo</button>
-                    &nbsp;&nbsp;
-                    <button type="button" className="btn" onClick={redoMove} disabled={!chessBoard.canRedoMove}>Redo</button>
-                </div>
-                {/* <div>
-                    <button type="button" className="btn" onClick={exportBoard}>Export</button>
-                </div>
-                <div>
-                    <input type="file" id="import" onChange={importBoard} />
-                </div> */}
-            </div>
             <div className="chess-board">
                 <div className="chess-grid">
                     {chessBoard.boardView.flat().map((e, i) => {
@@ -134,8 +113,21 @@ const ChessGameScene: React.FC = () => {
                     })}
                 </div>
             </div>
-            <div className="chess-moves">
-                {movesComponent}
+            <div className="chess-dashboard">
+                <div className="chess-info">
+                    {/* <span>Player: {chessBoard.playerColor}</span> */}
+                    <span>Playing: {chessBoard.board.playingColor}</span>
+                </div>
+                <div className="chess-controls">
+                    <button type="button" className="btn" onClick={resetBoard}>Reset</button>
+                    <button type="button" className="btn" onClick={undoMove} disabled={!chessBoard.canUndoMove}>Undo</button>
+                    <button type="button" className="btn" onClick={redoMove} disabled={!chessBoard.canRedoMove}>Redo</button>
+                    {/* <button type="button" className="btn" onClick={exportBoard}>Export</button>
+                    <input type="file" id="import" onChange={importBoard} /> */}
+                </div>
+                <div className="chess-moves">
+                    {movesComponent}
+                </div>
             </div>
         </div>
     );

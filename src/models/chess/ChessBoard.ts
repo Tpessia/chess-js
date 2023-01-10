@@ -62,6 +62,10 @@ export class ChessBoard {
         return this.undoneSnapshots.length > 0;
     }
 
+    get isFinished() {
+        return this.board.check?.type === ChessCheckType.Checkmate || this.board.check?.type === ChessCheckType.Stalemate;
+    }
+
     // Squares
 
     getSquare(coord: ChessCoordinate, snapshotIndex?: number) {
@@ -96,6 +100,7 @@ export class ChessBoard {
     // Moves
 
     getMoves(square: ChessSquare) {
+        if (this.isFinished) return;
         if (square.piece == null) return;
         if (square.piece.color !== this.board.playingColor) return;
         let moves = square.piece.getMoves(square.coordinate, this);
@@ -103,7 +108,7 @@ export class ChessBoard {
     }
 
     movePiece(move: ChessMove) {
-        // TODO: ensure move wont cause a checkmate
+        if (this.isFinished) return;
 
         const moves = [move, ...(move.sideEffects ?? [])];
 
@@ -126,7 +131,10 @@ export class ChessBoard {
         // SAVE MOVE
 
         this.saveMove(move);
-        this.undoneSnapshots = [];
+
+        if (!this.isSimulating) { // TODO: improve isSimulation check logic
+            this.undoneSnapshots = [];
+        }
     }
 
     saveMove(move?: ChessMove) {
@@ -136,8 +144,9 @@ export class ChessBoard {
         this.snapshots.push(newSnapshot); // Push empty board
 
         if (!this.isSimulating) { // TODO: improve isSimulation check logic
-            newSnapshot.check = this.getCheck();
-            if (newSnapshot.check?.type != null) alert(newSnapshot.check.type);
+            const check = this.getCheck();
+            this.board.check = check;  // TODO: workaround because of undoMove usage on this.getCheck (it resets the real snapshot on second pop)
+            if (this.board.check?.type != null) alert(this.board.check.type);
         }
     }
 
@@ -151,7 +160,9 @@ export class ChessBoard {
 
         // SAVE UNDO
 
-        this.undoneSnapshots.push(snapshot);
+        if (!this.isSimulating) { // TODO: improve isSimulation check logic
+            this.undoneSnapshots.push(snapshot);
+        }
 
         // SAVE MOVE
 
@@ -197,13 +208,6 @@ export class ChessBoard {
         // *Checkmate brute-force:
         // - When under Check loop over every possible friendly movement and check if all still result in check
 
-        // TODO: Stalemate
-
-        const check: ChessCheck = {
-            type: ChessCheckType.Check,
-            safeMoves: [],
-        };
-
         const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
         const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.board.playingColor));
 
@@ -211,23 +215,31 @@ export class ChessBoard {
 
         if (kingSquare?.piece == null) throw new Error('King not found');
 
-        const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
-
         // Any next enemy move that will capture the king
         const checks = enemyNextMoves.filter(e => e.capture?.getName() === kingSquare.piece!.getName());
 
-        if (checks.length > 0) { // CHECK/MATE
-            for (let nextKingMove of nextKingMoves) { // TODO: check if new move won't create new check (use undo/redo?)
-                // Check if any king movement will kill the enemy or escape enemy capturing territory
+        const validateCheckmate = () => {
+            // https://www.chess.com/terms/scholars-mate-chess
+
+            const check: ChessCheck = {
+                type: ChessCheckType.Check,
+                safeMoves: [],
+            };
+
+            // Check if any king movement will kill the enemy or escape enemy capturing territory
+
+            const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
+
+            for (let nextKingMove of nextKingMoves) {
                 const checkSafe = enemyNextMoves.every(e => e.targetCoordinate !== nextKingMove.targetCoordinate || nextKingMove.targetCoordinate === e.originCoordinate);
                 if (checkSafe) check.safeMoves.push({ type: ChessCheckMoveType.KingMove, move: nextKingMove });
             }
 
+            // Check if any friendly movement will kill the enemy or obstruct the enemy's path
+
             const nextOtherMoves = selfNextMoves.filter(e => e.piece.getName() !== kingSquare.piece!.getName());
 
-            for (let nextOtherMove of nextOtherMoves) { // TODO: check if new move won't create new check (use undo/redo?)
-                // Check if any friendly movement will kill the enemy or obstruct the enemy's path
-
+            for (let nextOtherMove of nextOtherMoves) {
                 const checkSafeByKill = checks.every(e => nextOtherMove.targetCoordinate === e.originCoordinate);
                 if (checkSafeByKill) check.safeMoves.push({ type: ChessCheckMoveType.PieceKill, move: nextOtherMove });
 
@@ -235,13 +247,15 @@ export class ChessBoard {
                 if (checkSafeByObstruction) check.safeMoves.push({ type: ChessCheckMoveType.PieceObstruction, move: nextOtherMove });
             }
 
-            if (!this.isSimulating) {
+            // Check if new move won't create new check (simulate move then undo)
+
+            if (!this.isSimulating) { // Prevent recursive getCheck() call
                 this.isSimulating = true;
 
                 for (let simulateMove of [...check.safeMoves]) {
                     this.movePiece(simulateMove.move);
 
-                    // Fake to verify check again
+                    // Fake color to verify check again
                     this.board.playingColor = this.reverseColor(this.board.playingColor);
                     const reCheck = this.getCheck();
 
@@ -258,33 +272,46 @@ export class ChessBoard {
 
             if (check.safeMoves.length === 0) check.type = ChessCheckType.Checkmate;
 
-            console.log('check', check);
-
             return check;
-        }
-        // else { // STALEMATE
-        //     check.type = ChessCheckType.Stalemate;
+        };
 
-        //     let isStalemate = nextKingMoves.length > 0;
+        const validateStalemate = () => {
+            // https://www.chess.com/forum/view/game-showcase/fastest-stalemate-known-in-chess
 
-        //     this.isSimulating = true;
+            const check: ChessCheck = {
+                type: ChessCheckType.Stalemate,
+                safeMoves: [],
+            };
 
-        //     for (let nextKingMove of nextKingMoves) {
-        //         this.movePiece(nextKingMove);
+            const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
 
-        //         // Fake to verify check again
-        //         this.board.playingColor = this.reverseColor(this.board.playingColor);
-        //         const reCheck = this.getCheck();
+            let movesCheck: (ChessCheck | undefined)[] = [];
 
-        //         isStalemate = isStalemate && reCheck != null;
+            if (!this.isSimulating) { // Prevent recursive getCheck() call
+                this.isSimulating = true;
 
-        //         this.undoMove();
-        //     }
+                for (let nextKingMove of nextKingMoves) {
+                    this.movePiece(nextKingMove);
 
-        //     this.isSimulating = false;
+                    // Fake color to verify check again
+                    this.board.playingColor = this.reverseColor(this.board.playingColor);
+                    const reCheck = this.getCheck();
 
-        //     return isStalemate ? check : undefined;
-        // }
+                    movesCheck.push(reCheck);
+
+                    this.undoMove();
+                }
+
+                this.isSimulating = false;
+            }
+
+            const isStalemate = movesCheck.length > 0 && movesCheck.every(e => e != null);
+
+            return isStalemate ? check : undefined;
+        };
+
+        if (checks.length > 0) return validateCheckmate();
+        else return validateStalemate();
 
         return undefined;
     }
