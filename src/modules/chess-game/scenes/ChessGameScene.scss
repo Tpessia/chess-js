@@ -6,6 +6,31 @@
     align-items: flex-start;
     justify-content: center;
 
+    @media (max-width: 900px) {
+        flex-direction: column;
+        align-items: center;
+
+        .chess-board {
+            .chess-grid {
+                grid-template-columns: repeat(8, 2.5rem) !important;
+                grid-template-rows: repeat(8, 2.5rem) !important;
+                font-size: 0.9rem !important;
+
+                .is-highlight {
+                    &::before {
+                        width: 30px !important;
+                        height: 30px !important;
+                    }
+                }
+            }
+        }
+
+        .chess-dashboard {
+            margin-top: 20px;
+            margin-left: 0 !important;
+        }
+    }
+
     .chess-board {
         display: flex;
         align-items: center;

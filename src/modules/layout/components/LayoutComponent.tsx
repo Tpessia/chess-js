@@ -25,22 +25,20 @@ const LayoutComponent: React.FC<PropsWithChildren> = (props) => {
                     </nav>
                 </header>
 
-                <nav className="mobile-navbar">
+                {/* <nav className="mobile-navbar">
                     <ul>
                         <li className="ripple">
                             <NavLink end to="/" className={({ isActive }) => isActive ? 'active' : 'inactive'}>
                                 <i className="fa-solid fa-chess" />
-                                {/* <span>Ranking</span> */}
                             </NavLink>
                         </li>
                         <li className="ripple">
                             <NavLink end to="/" className={({ isActive }) => isActive ? 'active' : 'inactive'}>
                                 <i className="fa-solid fa-chess" />
-                                {/* <span>Ranking</span> */}
                             </NavLink>
                         </li>
                     </ul>
-                </nav>
+                </nav> */}
 
                 <main className="content">
                     <div className="container">{props.children}</div>
