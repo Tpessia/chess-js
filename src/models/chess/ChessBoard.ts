@@ -6,8 +6,8 @@ import { cloneDeep } from 'lodash-es';
 import memoize from 'memoizee';
 import { ChessCoordinate, ChessCoordinateCode } from './ChessCoordinate';
 import { ChessMove } from './ChessMove';
-import { ChessPiece, ChessPiecePawn, ChessPieceQueen } from './ChessPiece';
-import { ChessPieceColor, ChessPieceName } from './ChessPieceType';
+import { ChessPiece } from './ChessPiece';
+import { ChessPieceColor, ChessPieceName, reverseChessPieceColor } from './ChessPieceType';
 import { ChessSquare } from './ChessSquare';
 
 export class ChessBoard {
@@ -43,6 +43,10 @@ export class ChessBoard {
         return this.snapshots[this.snapshots.length - 1];
     }
 
+    get safeMoves() {
+        return this.board.check?.safeMoves.map(e => e.move) ?? [];
+    }
+
     get boardView() {
         let boardMatrix = this.board.matrix;
 
@@ -64,6 +68,10 @@ export class ChessBoard {
 
     get isFinished() {
         return this.board.check?.type === ChessCheckType.Checkmate || this.board.check?.type === ChessCheckType.Stalemate;
+    }
+
+    get winner() {
+        return this.isFinished ? this.board.playingColor : null;
     }
 
     // Squares
@@ -104,11 +112,17 @@ export class ChessBoard {
         if (square.piece == null) return;
         if (square.piece.color !== this.board.playingColor) return;
         let moves = square.piece.getMoves(square.coordinate, this);
+
+        // Filter safe moves only if check
+        if (this.board.check != null) moves = moves.filter(e => this.safeMoves.some(f => e.originCoordinate.code === f.originCoordinate.code && e.targetCoordinate.code === f.targetCoordinate.code));
+
         return moves;
     }
 
     movePiece(move: ChessMove) {
         if (this.isFinished) return;
+
+        // MOVE
 
         const moves = [move, ...(move.sideEffects ?? [])];
 
@@ -122,10 +136,14 @@ export class ChessBoard {
             const targetSquare = this.getSquare(m.targetCoordinate);
             const capture = targetSquare.piece;
 
-            if (capture?.color === piece.color) throw new Error(`Invalid movement, cannot capture pieces of same color at ${m.targetCoordinate}`);
+            if (capture?.color === piece.color) throw new Error(`Invalid movement, cannot capture pieces of same color at ${m.targetCoordinate.code}`);
     
             square.piece = undefined;
             targetSquare.piece = piece;
+
+            // AFTER EFFECTS
+
+            piece.applyAfterEffects(m, this);
         }
 
         // SAVE MOVE
@@ -140,24 +158,13 @@ export class ChessBoard {
     saveMove(move?: ChessMove) {
         this.board.move = move;
 
-        const newSnapshot = new ChessBoardSnapshot(this.snapshots.length > 1 ? this.reverseColor(this.board.playingColor) : this.board.playingColor, cloneDeep(this.board.matrix));
+        const newSnapshot = new ChessBoardSnapshot(this.snapshots.length > 1 ? reverseChessPieceColor(this.board.playingColor) : this.board.playingColor, cloneDeep(this.board.matrix));
         this.snapshots.push(newSnapshot); // Push empty board
 
         if (!this.isSimulating) { // TODO: improve isSimulation check logic
             const check = this.getCheck();
             this.board.check = check; // TODO: workaround because of undoMove usage on this.getCheck (it resets the real snapshot on second pop)
             if (this.board.check?.type != null) alert(this.board.check.type);
-        }
-
-        // Promote to Queen
-        // TODO: migrate logic to ChessPiece.ts
-
-        if (move?.piece instanceof ChessPiecePawn) {
-            const shouldPromote = move.piece.color === ChessPieceColor.Black && move.targetCoordinate.rowIndex === 7 || move.piece.color === ChessPieceColor.White && move.targetCoordinate.rowIndex === 0;
-            if (shouldPromote) {
-                const pawnSquare = this.getSquare(move.targetCoordinate);
-                pawnSquare.piece = new ChessPieceQueen(move.piece.color, move.targetCoordinate.code);
-            }
         }
     }
 
@@ -220,7 +227,7 @@ export class ChessBoard {
         // - When under Check loop over every possible friendly movement and check if all still result in check
 
         const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
-        const enemyNextMoves = this.getAllNextMoves(this.reverseColor(this.board.playingColor));
+        const enemyNextMoves = this.getAllNextMoves(reverseChessPieceColor(this.board.playingColor));
 
         const kingSquare = this.getSquareByPieceColor(this.board.playingColor, ChessPieceName.e1WhiteKing, ChessPieceName.e8BlackKing);
 
@@ -228,6 +235,7 @@ export class ChessBoard {
 
         // Any next enemy move that will capture the king
         const checks = enemyNextMoves.filter(e => e.capture?.getName() === kingSquare.piece!.getName());
+        const checksPaths = checks.map(e => this.projectPath(e.originCoordinate, e.targetCoordinate).map(e => e.code));
 
         const validateCheckmate = () => {
             // https://www.chess.com/terms/scholars-mate-chess
@@ -242,7 +250,7 @@ export class ChessBoard {
             const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
 
             for (let nextKingMove of nextKingMoves) {
-                const checkSafe = enemyNextMoves.every(e => e.targetCoordinate !== nextKingMove.targetCoordinate || nextKingMove.targetCoordinate === e.originCoordinate);
+                const checkSafe = enemyNextMoves.every(e => e.targetCoordinate.code !== nextKingMove.targetCoordinate.code || nextKingMove.targetCoordinate.code === e.originCoordinate.code);
                 if (checkSafe) check.safeMoves.push({ type: ChessCheckMoveType.KingMove, move: nextKingMove });
             }
 
@@ -251,10 +259,10 @@ export class ChessBoard {
             const nextOtherMoves = selfNextMoves.filter(e => e.piece.getName() !== kingSquare.piece!.getName());
 
             for (let nextOtherMove of nextOtherMoves) {
-                const checkSafeByKill = checks.every(e => nextOtherMove.targetCoordinate === e.originCoordinate);
+                const checkSafeByKill = checks.every(e => nextOtherMove.targetCoordinate.code === e.originCoordinate.code);
                 if (checkSafeByKill) check.safeMoves.push({ type: ChessCheckMoveType.PieceKill, move: nextOtherMove });
 
-                const checkSafeByObstruction = checks.every(e => this.projectPath(e.originCoordinate, e.targetCoordinate).includes(nextOtherMove.targetCoordinate));
+                const checkSafeByObstruction = checksPaths.every(e => e.includes(nextOtherMove.targetCoordinate.code));
                 if (checkSafeByObstruction) check.safeMoves.push({ type: ChessCheckMoveType.PieceObstruction, move: nextOtherMove });
             }
 
@@ -267,7 +275,7 @@ export class ChessBoard {
                     this.movePiece(simulateMove.move);
 
                     // Fake color to verify check again
-                    this.board.playingColor = this.reverseColor(this.board.playingColor);
+                    this.board.playingColor = reverseChessPieceColor(this.board.playingColor);
                     const reCheck = this.getCheck();
 
                     // New move causes new check
@@ -294,18 +302,16 @@ export class ChessBoard {
                 safeMoves: [],
             };
 
-            const nextKingMoves = selfNextMoves.filter(e => e.piece.getName() === kingSquare.piece!.getName());
-
             let movesCheck: (ChessCheck | undefined)[] = [];
 
             if (!this.isSimulating) { // Prevent recursive getCheck() call
                 this.isSimulating = true;
 
-                for (let nextKingMove of nextKingMoves) {
+                for (let nextKingMove of selfNextMoves) { // TODO: improve performance?
                     this.movePiece(nextKingMove);
 
                     // Fake color to verify check again
-                    this.board.playingColor = this.reverseColor(this.board.playingColor);
+                    this.board.playingColor = reverseChessPieceColor(this.board.playingColor);
                     const reCheck = this.getCheck();
 
                     movesCheck.push(reCheck);
@@ -355,9 +361,5 @@ export class ChessBoard {
 
     toString() {
         return this.board.matrix.map(e => e.map(f => f.piece?.symbol ?? '.').join(' ')).join('\n');
-    }
-
-    private reverseColor(color: ChessPieceColor) {
-        return color === ChessPieceColor.White ? ChessPieceColor.Black : ChessPieceColor.White;
     }
 }

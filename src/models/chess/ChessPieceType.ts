@@ -55,3 +55,7 @@ export enum ChessPieceName {
     g1WhiteKnight = 'g1WhiteKnight',
     h1WhiteRook = 'h1WhiteRook',
 }
+
+export function reverseChessPieceColor(color: ChessPieceColor) {
+    return color === ChessPieceColor.White ? ChessPieceColor.Black : ChessPieceColor.White;
+}

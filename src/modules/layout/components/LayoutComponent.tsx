@@ -1,6 +1,6 @@
 import { NotificationService } from '@/services/NotificationService';
 import React, { PropsWithChildren } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import './LayoutComponent.scss';
 
 const LayoutComponent: React.FC<PropsWithChildren> = (props) => {
@@ -19,7 +19,7 @@ const LayoutComponent: React.FC<PropsWithChildren> = (props) => {
                     <nav className="desktop-navbar">
                         <ul>
                             <li>
-                                <NavLink end to="/" className={({ isActive }) => isActive ? 'active' : 'inactive'}>Play</NavLink>
+                                {/* <NavLink end to="/" className={({ isActive }) => isActive ? 'active' : 'inactive'}>Play</NavLink> */}
                             </li>
                         </ul>
                     </nav>

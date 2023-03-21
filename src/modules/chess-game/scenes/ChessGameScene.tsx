@@ -1,8 +1,7 @@
 import { ChessBoard } from '@/models/chess/ChessBoard';
 import { ChessMove } from '@/models/chess/ChessMove';
-import { ChessPieceColor } from '@/models/chess/ChessPieceType';
+import { ChessPieceColor, reverseChessPieceColor } from '@/models/chess/ChessPieceType';
 import { ChessSquare } from '@/models/chess/ChessSquare';
-import { exportJson, importJson } from '@/utils';
 import useLazyRef from '@/utils/reactjs/hooks/useLazyRef';
 import useStateUpdate from '@/utils/reactjs/hooks/useUpdateState';
 import clsx from 'clsx';
@@ -65,19 +64,18 @@ const ChessGameScene: React.FC = () => {
         refreshChessBoard(new ChessBoard(chessBoard.playerColor));
     };
 
-    // TODO: import/export
-    const exportBoard = () => {
-        exportJson(chessBoard, 'chess-board');
-    };
+    // TODO: import/export, https://github.com/typestack/class-transformer
+    // const exportBoard = () => {
+    //     exportJson(chessBoard, 'chess-board');
+    // };
 
-    const importBoard = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e || !e.target || !e.target.files || e.target.files.length === 0) return;
+    // const importBoard = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     if (!e || !e.target || !e.target.files || e.target.files.length === 0) return;
 
-        const newChessBoard = await importJson(e.target.files[0]);
-        // e.target.value = null;
+    //     const newChessBoard = await importJson(e.target.files[0]);
 
-        refreshChessBoard(newChessBoard);
-    };
+    //     refreshChessBoard(newChessBoard);
+    // };
 
     const chessMoveClass = (move: ChessMove) => clsx('chess-move', `chess-move-${move.piece.color.toLocaleLowerCase()}`);
 
@@ -101,11 +99,12 @@ const ChessGameScene: React.FC = () => {
                 <div className="chess-grid">
                     {chessBoard.boardView.flat().map((e, i) => {
                         const moveHighlight = state.highlight?.targets.find(f => e.coordinate.code === f.targetCoordinate.code);
+                        const winnerColor = chessBoard.winner ? reverseChessPieceColor(chessBoard.winner) : null;
                         const onClick = () => moveHighlight ? movePiece(moveHighlight) : highlightMoves(e);
 
                         return (
                             <span key={i} className={chessSquareClass(e, !!moveHighlight)} onClick={onClick}>
-                                {e.piece?.symbol}
+                                {winnerColor === e.piece?.color ? <b>{e.piece?.symbol}</b> : e.piece?.symbol}
                                 {<span className="number-label">{e.numberLabel}</span>}
                                 {<span className="letter-label">{e.letterLabel}</span>}
                             </span>
@@ -116,15 +115,18 @@ const ChessGameScene: React.FC = () => {
             <div className="chess-dashboard">
                 <div className="chess-info">
                     {/* <span>Player: {chessBoard.playerColor}</span> */}
-                    <div style={{marginBottom: '10px'}}>Playing: {chessBoard.board.playingColor}</div>
+                    <div style={{ marginBottom: '10px' }}>Playing: {chessBoard.board.playingColor}</div>
                     <div>Human vs Human</div>
                 </div>
                 <div className="chess-controls">
-                    <button type="button" className="btn" onClick={resetBoard}>Reset</button>
-                    <button type="button" className="btn" onClick={undoMove} disabled={!chessBoard.canUndoMove}>Undo</button>
-                    <button type="button" className="btn" onClick={redoMove} disabled={!chessBoard.canRedoMove}>Redo</button>
-                    {/* <button type="button" className="btn" onClick={exportBoard}>Export</button>
-                    <input type="file" id="import" onChange={importBoard} /> */}
+                    <button type="button" className="chess-control-btn btn" onClick={resetBoard}>Reset</button>
+                    <button type="button" className="chess-control-btn btn" onClick={undoMove} disabled={!chessBoard.canUndoMove}>Undo</button>
+                    <button type="button" className="chess-control-btn btn" onClick={redoMove} disabled={!chessBoard.canRedoMove}>Redo</button>
+                    {/* <button type="button" className="chess-control-btn btn" onClick={exportBoard}>Export</button>
+                    <label className="chess-control-btn chess-import btn">
+                        <input type="file" onChange={importBoard} />
+                        Import
+                    </label> */}
                 </div>
                 <div className="chess-moves">
                     {movesComponent}

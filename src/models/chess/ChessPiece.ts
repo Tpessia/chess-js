@@ -16,11 +16,13 @@ export abstract class ChessPiece {
         this.initCoordinate = initCoordinate;
     }
 
-    abstract getMovesSpecific(originCoord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard): ChessMoveRaw[];
-
     static getName(color: ChessPieceColor, type: ChessPieceType, initCoordinate: ChessCoordinateCode) {
         return `${initCoordinate}${color.toString()}${type}` as ChessPieceName;
     }
+
+    abstract getMovesSpecific(originCoord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard): ChessMoveRaw[];
+
+    applyAfterEffects(move: ChessMove, chessBoard: ChessBoard): void { }
 
     getName() {
         return ChessPiece.getName(this.color, this.type, this.initCoordinate);
@@ -67,6 +69,14 @@ export class ChessPiecePawn extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.Pawn;
     type: ChessPieceType = ChessPieceType.Pawn;
 
+    applyAfterEffects(move: ChessMove, chessBoard: ChessBoard): void {
+        const shouldPromote = (move.piece.color === ChessPieceColor.Black && move.targetCoordinate.rowIndex === 7) || (move.piece.color === ChessPieceColor.White && move.targetCoordinate.rowIndex === 0);
+        if (shouldPromote) {
+            const pawnSquare = chessBoard.getSquare(move.targetCoordinate);
+            pawnSquare.piece = new ChessPieceQueen(move.piece.color, move.targetCoordinate.code);
+        }
+    }
+
     getMovesSpecific(originCoord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard) {
         const moves: ChessMoveRaw[] = [];
 
@@ -74,15 +84,16 @@ export class ChessPiecePawn extends ChessPiece {
 
         const forwardSquare = chessBoard.getSquareByIndex(originCoord.rowIndex + (1 * direction), originCoord.colIndex);
 
-        if (forwardSquare != null && forwardSquare.piece == null)
+        if (forwardSquare != null && forwardSquare.piece == null) {
             moves.push(new ChessMoveRaw(forwardSquare.coordinate));
 
-        // Double Forward
+            // Double Forward
 
-        if (this.getMovesHist(chessBoard).length === 0) {
-            const doubleForwardSquare = chessBoard.getSquareByIndex(originCoord.rowIndex + (2 * direction), originCoord.colIndex);
-            if (doubleForwardSquare != null && doubleForwardSquare.piece == null)
-                moves.push(new ChessMoveRaw(doubleForwardSquare.coordinate));
+            if (this.getMovesHist(chessBoard).length === 0) {
+                const doubleForwardSquare = chessBoard.getSquareByIndex(originCoord.rowIndex + (2 * direction), originCoord.colIndex);
+                if (doubleForwardSquare != null && doubleForwardSquare.piece == null)
+                    moves.push(new ChessMoveRaw(doubleForwardSquare.coordinate));
+            }
         }
 
         // Diagonal

@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "setup": "npm install",
+    "setup": "npm config set script-shell \"C:\\Program Files\\git\\bin\\bash.exe\" && npm install",
     "setup:prod": "npm install --only=prod",
     "start": "cross-env REACT_APP_ENVIRONMENT=local craco start",
     "build:dev": "cross-env REACT_APP_ENVIRONMENT=development craco build",
     "build:prod": "rimraf build && cross-env REACT_APP_ENVIRONMENT=production craco build",
+    "build:git": "rm -rf docs && npm run build:prod && mv build docs",
     "test": "craco test",
     "lint": "eslint --fix --ext .js,.ts,.jsx,.tsx ./src",
     "eject": "react-scripts eject"

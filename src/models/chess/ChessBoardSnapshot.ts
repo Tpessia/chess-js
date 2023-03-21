@@ -21,7 +21,7 @@ export class ChessBoardSnapshot {
 
     // Accessors
 
-    piecesIndex = () => this.piecesIndexFn(this.matrix); // TODO: fix undo castling
+    piecesIndex = () => this.piecesIndexFn(this.matrix);
     private piecesIndexFn = memoize((matrix: ChessBoardMatrix) => matrix.flat().filter(e => e.piece != null).reduce((acc, val) => {
         return { ...acc, [val.piece!.getName()]: val };
     }, {} as EnumDictionary<ChessPieceName, ChessSquare>), { primitive: true, max: 1 });
