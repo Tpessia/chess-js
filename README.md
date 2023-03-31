@@ -8,7 +8,6 @@ Chess game built with JavaScript and React.js
 
 ### TODO:
 
-- Import/Export
-- Improve Simulation (ChessBoard.isSimulating)
-- Improve Responsible CSS
-- Create AI: https://ml5js.org/
+- Improve Simulation Logic (ChessBoard.isSimulating / ChessBoard.simulateMove / self-check)
+- Import/Export Game
+- Improve ChessBot (https://ml5js.org/)

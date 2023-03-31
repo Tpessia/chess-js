@@ -113,8 +113,24 @@ export class ChessBoard {
         if (square.piece.color !== this.board.playingColor) return;
         let moves = square.piece.getMoves(square.coordinate, this);
 
+        // TODO: simulate each move for check (prevent self-check)
+
         // Filter safe moves only if check
         if (this.board.check != null) moves = moves.filter(e => this.safeMoves.some(f => e.originCoordinate.code === f.originCoordinate.code && e.targetCoordinate.code === f.targetCoordinate.code));
+
+        return moves;
+    }
+
+    getNextMoves(color?: ChessPieceColor, filterCheck: boolean = true) {
+        const flatBoard = this.board.matrix.flat();
+        const moves: ChessMove[] = [];
+
+        for (let square of flatBoard) {
+            if (square.piece == null) continue;
+            if (square.piece.color != null && square.piece.color !== color) continue;
+            const squareMoves = filterCheck ? this.getMoves(square) : square.piece.getMoves(square.coordinate, this);
+            moves.push(...(squareMoves ?? []));
+        }
 
         return moves;
     }
@@ -164,7 +180,7 @@ export class ChessBoard {
         if (!this.isSimulating) { // TODO: improve isSimulation check logic
             const check = this.getCheck();
             this.board.check = check; // TODO: workaround because of undoMove usage on this.getCheck (it resets the real snapshot on second pop)
-            if (this.board.check?.type != null) alert(this.board.check.type);
+            if (this.board.check?.type != null) setTimeout(() => alert(this.board.check!.type), 10);
         }
     }
 
@@ -198,20 +214,6 @@ export class ChessBoard {
         this.saveMove(snapshot.move);
     }
 
-    getAllNextMoves(color?: ChessPieceColor) {
-        const flatBoard = this.board.matrix.flat();
-        const moves: ChessMove[] = [];
-
-        for (let square of flatBoard) {
-            if (square.piece == null) continue;
-            if (square.piece.color != null && square.piece.color !== color) continue;
-            const squareMoves = square.piece.getMoves(square.coordinate, this);
-            moves.push(...(squareMoves ?? []));
-        }
-
-        return moves;
-    }
-
     getCheck(): ChessCheck | undefined {
         // CHECK
         // Check:
@@ -226,8 +228,8 @@ export class ChessBoard {
         // *Checkmate brute-force:
         // - When under Check loop over every possible friendly movement and check if all still result in check
 
-        const selfNextMoves = this.getAllNextMoves(this.board.playingColor);
-        const enemyNextMoves = this.getAllNextMoves(reverseChessPieceColor(this.board.playingColor));
+        const selfNextMoves = this.getNextMoves(this.board.playingColor, false);
+        const enemyNextMoves = this.getNextMoves(reverseChessPieceColor(this.board.playingColor), false);
 
         const kingSquare = this.getSquareByPieceColor(this.board.playingColor, ChessPieceName.e1WhiteKing, ChessPieceName.e8BlackKing);
 
@@ -332,6 +334,10 @@ export class ChessBoard {
     }
 
     // Simulate
+
+    simulateMove(): ChessCheck | undefined {
+        return undefined;
+    }
 
     projectPath(coord: ChessCoordinate, nextCoord: ChessCoordinate) {
         let coords: ChessCoordinate[] = [];

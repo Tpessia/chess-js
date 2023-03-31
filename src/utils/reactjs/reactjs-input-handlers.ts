@@ -46,7 +46,7 @@ export function handleMail(e: React.ChangeEvent<HTMLInputElement | HTMLSelectEle
         mask: /^\S*@?\S*$/,
     });
 
-    const mail = mailMask.resolve(value); // TODO: should've used toLowerCase();
+    const mail = mailMask.resolve(value);
 
     return mail;
 }

@@ -7,10 +7,20 @@
     justify-content: center;
 
     @media (max-width: 900px) {
-        flex-direction: column;
+        flex-direction: column-reverse;
         align-items: center;
 
+        .chess-dashboard {
+            margin-left: 0 !important;
+
+            .chess-moves {
+                height: 200px !important;
+            }
+        }
+
         .chess-board {
+            margin-top: 20px;
+
             .chess-grid {
                 grid-template-columns: repeat(8, 2.5rem) !important;
                 grid-template-rows: repeat(8, 2.5rem) !important;
@@ -23,11 +33,6 @@
                     }
                 }
             }
-        }
-
-        .chess-dashboard {
-            margin-top: 20px;
-            margin-left: 0 !important;
         }
     }
 
@@ -141,6 +146,11 @@
     .chess-dashboard {
         width: 235px;
         margin-left: 20px;
+
+        .chess-info,
+        .chess-controls {
+            user-select: none;
+        }
 
         .chess-info {
             padding: 10px 15px;

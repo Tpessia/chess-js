@@ -7,6 +7,7 @@ import { ChessPieceColor, ChessPieceName, ChessPieceSymbol, ChessPieceType } fro
 export abstract class ChessPiece {
     abstract symbol: ChessPieceSymbol;
     abstract type: ChessPieceType;
+    abstract value: number;
 
     color: ChessPieceColor;
     initCoordinate: ChessCoordinateCode;
@@ -68,6 +69,7 @@ export abstract class ChessPiece {
 export class ChessPiecePawn extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.Pawn;
     type: ChessPieceType = ChessPieceType.Pawn;
+    value: number = 1;
 
     applyAfterEffects(move: ChessMove, chessBoard: ChessBoard): void {
         const shouldPromote = (move.piece.color === ChessPieceColor.Black && move.targetCoordinate.rowIndex === 7) || (move.piece.color === ChessPieceColor.White && move.targetCoordinate.rowIndex === 0);
@@ -115,6 +117,7 @@ export class ChessPiecePawn extends ChessPiece {
 export class ChessPieceKing extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.King;
     type: ChessPieceType = ChessPieceType.King;
+    value: number = 10;
 
     getMovesSpecific(coord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard) {
         const moves: ChessMoveRaw[] = [];
@@ -183,10 +186,9 @@ export class ChessPieceKing extends ChessPiece {
 export class ChessPieceQueen extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.Queen;
     type: ChessPieceType = ChessPieceType.Queen;
+    value: number = 9;
 
     getMovesSpecific(coord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard) {
-        // TODO: promote to queen
-
         const moves: ChessMoveRaw[] = [];
 
         // Multi
@@ -218,6 +220,7 @@ export class ChessPieceQueen extends ChessPiece {
 export class ChessPieceRook extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.Rook;
     type: ChessPieceType = ChessPieceType.Rook;
+    value: number = 5;
 
     getMovesSpecific(coord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard) {
         const moves: ChessMoveRaw[] = [];
@@ -247,6 +250,7 @@ export class ChessPieceRook extends ChessPiece {
 export class ChessPieceBishop extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.Bishop;
     type: ChessPieceType = ChessPieceType.Bishop;
+    value: number = 3;
 
     getMovesSpecific(coord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard) {
         const moves: ChessMoveRaw[] = [];
@@ -276,6 +280,7 @@ export class ChessPieceBishop extends ChessPiece {
 export class ChessPieceKnight extends ChessPiece {
     symbol: ChessPieceSymbol = ChessPieceSymbol.Knight;
     type: ChessPieceType = ChessPieceType.Knight;
+    value: number = 3;
 
     getMovesSpecific(coord: ChessCoordinate, direction: ChessMoveDirection, chessBoard: ChessBoard) {
         const moves: ChessMoveRaw[] = [];
